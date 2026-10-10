@@ -260,6 +260,7 @@ class ArchiMateConnector:
                         "y": str(node["y"]),
                         "w": str(node["w"]),
                         "h": str(node["h"]),
+                        f"{{{cls.XSI_NS}}}type": "Element",
                     },
                 )
 
@@ -272,6 +273,7 @@ class ArchiMateConnector:
                         "relationshipRef": conn["rel_id"],
                         "source": conn["source_diag_id"],
                         "target": conn["target_diag_id"],
+                        f"{{{cls.XSI_NS}}}type": "Relationship",
                     },
                 )
 
