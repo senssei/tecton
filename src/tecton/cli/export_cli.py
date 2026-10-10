@@ -44,21 +44,51 @@ def export_backstage(
 @app.command("archimate")
 def export_archimate(
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
-    output: Annotated[Optional[str], typer.Option("--output", "-o", help="Output XML file path (defaults to stdout)")] = None,
+    output: Annotated[Optional[str], typer.Option("--output", "-o", help="Output file path (defaults to stdout)")] = None,
+    format: Annotated[str, typer.Option("--format", "-f", help="Format: 'exchange' (Open Group XML) or 'archi' (Archi native .archimate)")] = "exchange",
     model_name: Annotated[str, typer.Option("--name", "-n", help="ArchiMate model name")] = "Tecton Architecture Model",
 ) -> None:
-    """Export architecture graph to The Open Group ArchiMate Model Exchange XML."""
+    """Export architecture graph to ArchiMate (Open Group standard XML or Archi native .archimate)."""
     target_path = _resolve_source(source)
     graph = C4EAMParser().parse_directory(target_path)
-    xml_content = ArchiMateConnector.export_xml(graph, model_name=model_name)
+
+    # Auto-detect format if output extension is .archimate
+    selected_format = "archi" if (output and output.endswith(".archimate")) or format.lower() == "archi" else "exchange"
+
+    if selected_format == "archi":
+        content = ArchiMateConnector.export_archi_xml(graph, model_name=model_name)
+        desc = "Archi Native XML (.archimate)"
+    else:
+        content = ArchiMateConnector.export_xml(graph, model_name=model_name)
+        desc = "ArchiMate Open Exchange XML"
 
     if output:
         out_file = Path(output)
         out_file.parent.mkdir(parents=True, exist_ok=True)
-        out_file.write_text(xml_content, encoding="utf-8")
-        console.print(f"[bold green]✓ Successfully exported ArchiMate Open Exchange XML to '{output}'[/bold green]")
+        out_file.write_text(content, encoding="utf-8")
+        console.print(f"[bold green]✓ Successfully exported {desc} to '{output}'[/bold green]")
     else:
-        console.print(xml_content)
+        console.print(content)
+
+
+@app.command("archi")
+def export_archi(
+    source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
+    output: Annotated[Optional[str], typer.Option("--output", "-o", help="Output .archimate file path (defaults to stdout)")] = None,
+    model_name: Annotated[str, typer.Option("--name", "-n", help="Model name")] = "Tecton Architecture Model",
+) -> None:
+    """Export architecture graph to Archi tool native format (.archimate) for direct 1-click opening via File > Open."""
+    target_path = _resolve_source(source)
+    graph = C4EAMParser().parse_directory(target_path)
+    content = ArchiMateConnector.export_archi_xml(graph, model_name=model_name)
+
+    if output:
+        out_file = Path(output)
+        out_file.parent.mkdir(parents=True, exist_ok=True)
+        out_file.write_text(content, encoding="utf-8")
+        console.print(f"[bold green]✓ Successfully exported native Archi model to '{output}'[/bold green]")
+    else:
+        console.print(content)
 
 
 @app.command("portal")

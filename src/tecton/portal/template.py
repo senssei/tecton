@@ -275,19 +275,46 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
 
     <!-- TAB 7: CONNECTORS & EXPORTS -->
     <div id="tab-connectors" class="tab-content space-y-6">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm space-y-4">
-          <h2 class="text-lg font-semibold">📦 Spotify Backstage Software Catalog</h2>
-          <p class="text-xs text-slate-400">Export architecture entities into Kubernetes-compliant Backstage catalog definitions (Components, Systems, Domains, APIs, and Resources).</p>
-          <a id="btn-download-backstage" href="/api/v1/export/backstage" download="catalog-info.yaml" class="inline-flex items-center space-x-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium text-white transition">
-            <span>⬇️ Download Backstage YAML</span>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm space-y-4 flex flex-col justify-between">
+          <div class="space-y-3">
+            <h2 class="text-lg font-semibold flex items-center space-x-2">
+              <span>🚀 Archi Native Model</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">RECOMMENDED</span>
+            </h2>
+            <p class="text-xs text-slate-400">Direct 1-click open in Archi (via <b>File &gt; Open...</b> or double-clicking <code>model.archimate</code>). Pre-structured into Archi Model Tree folders (Strategy, Application, Technology, Relations, Views).</p>
+            <div class="p-2.5 bg-slate-950 border border-slate-800/80 rounded text-[11px] text-slate-400">
+              <span class="text-indigo-400 font-semibold">⚡ Usage:</span> Open directly in Archi via <b>File &gt; Open...</b>
+            </div>
+          </div>
+          <a id="btn-download-archi" href="/api/v1/export/archi" download="model.archimate" class="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium text-white transition mt-4">
+            <span>⬇️ Download Archi (.archimate)</span>
           </a>
         </div>
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm space-y-4">
-          <h2 class="text-lg font-semibold">🏛️ The Open Group ArchiMate Open Exchange XML</h2>
-          <p class="text-xs text-slate-400">Standard Open Exchange XML (ArchiMate 3.0/3.1) supported by Archi, BiZZdesign, and Enterprise Architect.</p>
-          <a id="btn-download-archimate" href="/api/v1/export/archimate" download="model.xml" class="inline-flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-medium text-white transition">
+
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm space-y-4 flex flex-col justify-between">
+          <div class="space-y-3">
+            <h2 class="text-lg font-semibold">🏛️ Open Group Exchange XML</h2>
+            <p class="text-xs text-slate-400">Vendor-neutral ArchiMate 3.0/3.1 Open Exchange standard format. Compatible with BiZZdesign Horizzon, Sparx Enterprise Architect, and Archi.</p>
+            <div class="p-2.5 bg-slate-950 border border-emerald-500/20 rounded text-[11px] text-emerald-300">
+              <span class="font-semibold">💡 In Archi:</span> Use <b>File &gt; Import &gt; Model from Open Exchange File...</b>
+            </div>
+          </div>
+          <a id="btn-download-archimate" href="/api/v1/export/archimate" download="model.xml" class="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-medium text-white transition mt-4">
             <span>⬇️ Download ArchiMate XML</span>
+          </a>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm space-y-4 flex flex-col justify-between">
+          <div class="space-y-3">
+            <h2 class="text-lg font-semibold">📦 Spotify Backstage Catalog</h2>
+            <p class="text-xs text-slate-400">Export architecture entities into Kubernetes-compliant Backstage catalog definitions (Components, Systems, Domains, APIs, and Resources).</p>
+            <div class="p-2.5 bg-slate-950 border border-slate-800/80 rounded text-[11px] text-slate-400">
+              <span class="text-sky-400 font-semibold">⚡ Usage:</span> Commit to repo root as <code>catalog-info.yaml</code>
+            </div>
+          </div>
+          <a id="btn-download-backstage" href="/api/v1/export/backstage" download="catalog-info.yaml" class="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-sky-600 hover:bg-sky-500 rounded-lg text-sm font-medium text-white transition mt-4">
+            <span>⬇️ Download Backstage YAML</span>
           </a>
         </div>
       </div>
@@ -408,6 +435,10 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
       state.diagrams = data.diagrams || {};
 
       // Disable live download links and replace with blob or notice
+      document.getElementById('btn-download-archi').onclick = (e) => {
+        e.preventDefault();
+        downloadBlob(data.archi_native_xml || '', 'model.archimate', 'application/xml');
+      };
       document.getElementById('btn-download-backstage').onclick = (e) => {
         e.preventDefault();
         downloadBlob(data.backstage_yaml || '', 'catalog-info.yaml', 'text/yaml');

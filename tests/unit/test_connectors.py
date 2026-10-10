@@ -106,7 +106,7 @@ plateaus:
     xml_str = ArchiMateConnector.export_xml(graph, model_name="Test Model")
 
     assert 'xmlns="http://www.opengroup.org/xsd/archimate/3.0/"' in xml_str
-    assert '<name>Test Model</name>' in xml_str
+    assert "Test Model" in xml_str
     assert 'xsi:type="Capability"' in xml_str
     assert 'xsi:type="ApplicationComponent"' in xml_str
     assert 'xsi:type="Plateau"' in xml_str
@@ -114,22 +114,71 @@ plateaus:
     assert 'xsi:type="Composition"' in xml_str
 
 
+def test_archimate_connector_export_archi_xml():
+    yaml_content = """
+capabilities:
+  - id: cap-payment
+    name: Payments
+    level: L1
+systems:
+  - id: sys-billing
+    name: Billing Engine
+    capabilities: [cap-payment]
+interfaces:
+  - id: iface-pay
+    name: Payment API
+    provider_system_id: sys-billing
+technologies:
+  - id: tech-db
+    name: Database Node
+plateaus:
+  - id: plat-cur
+    name: Current Plateau
+work_packages:
+  - id: wp-mig
+    name: Cloud Migration
+relationships:
+  - source_id: sys-billing
+    target_id: sys-billing
+    description: Internal Loop
+"""
+    graph = C4EAMParser().parse_content(yaml_content)
+    archi_xml = ArchiMateConnector.export_archi_xml(graph, model_name="Archi Native Test")
+
+    assert 'xmlns:archimate="http://www.archimatetool.com/archimate"' in archi_xml
+    assert 'name="Archi Native Test"' in archi_xml
+    assert '<folder name="Strategy" id="id-folder-strategy" type="strategy">' in archi_xml
+    assert '<folder name="Application" id="id-folder-application" type="application">' in archi_xml
+    assert '<folder name="Technology &amp; Physical"' in archi_xml
+    assert '<folder name="Relations" id="id-folder-relations" type="relations">' in archi_xml
+    assert '<folder name="Views" id="id-folder-views" type="diagrams">' in archi_xml
+
+    # Check typed elements inside folders
+    assert 'xsi:type="archimate:Capability"' in archi_xml
+    assert 'name="Payments"' in archi_xml
+    assert 'xsi:type="archimate:ApplicationComponent"' in archi_xml
+    assert 'name="Billing Engine"' in archi_xml
+    assert 'xsi:type="archimate:RealizationRelationship"' in archi_xml
+    assert 'name="Realizes"' in archi_xml
+    assert 'xsi:type="archimate:ArchimateDiagramModel"' in archi_xml
+
+
 def test_archimate_connector_import_xml():
     xml_content = """<?xml version="1.0" encoding="utf-8"?>
 <model xmlns="http://www.opengroup.org/xsd/archimate/3.0/"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        identifier="id-test">
-  <name>Imported Model</name>
+  <name xml:lang="en">Imported Model</name>
   <elements>
     <element identifier="cap-orders" xsi:type="Capability">
-      <name>Orders</name>
-      <documentation>Order processing</documentation>
+      <name xml:lang="en">Orders</name>
+      <documentation xml:lang="en">Order processing</documentation>
     </element>
     <element identifier="sys-store" xsi:type="ApplicationComponent">
-      <name>Online Store</name>
+      <name xml:lang="en">Online Store</name>
     </element>
     <element identifier="node-db" xsi:type="Node">
-      <name>PostgreSQL Server</name>
+      <name xml:lang="en">PostgreSQL Server</name>
     </element>
   </elements>
   <relationships>
@@ -144,3 +193,27 @@ def test_archimate_connector_import_xml():
     assert manifest["systems"][0]["capabilities"] == ["cap-orders"]
     assert len(manifest["technologies"]) == 1
     assert manifest["technologies"][0]["id"] == "node-db"
+
+
+def test_archimate_connector_import_archi_native_xml():
+    native_xml = """<?xml version="1.0" encoding="utf-8"?>
+<archimate:model xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:archimate="http://www.archimatetool.com/archimate" name="Native Model" id="id-model" version="5.0.0">
+  <folder name="Strategy" id="f-strat" type="strategy">
+    <element xsi:type="archimate:Capability" id="cap-cust" name="Customer Management">
+      <documentation>Handles customer CRM</documentation>
+    </element>
+  </folder>
+  <folder name="Application" id="f-app" type="application">
+    <element xsi:type="archimate:ApplicationComponent" id="sys-portal" name="Customer Portal"/>
+  </folder>
+  <folder name="Relations" id="f-rel" type="relations">
+    <element xsi:type="archimate:RealizationRelationship" id="r-real" source="sys-portal" target="cap-cust" name="Realizes"/>
+  </folder>
+</archimate:model>"""
+    manifest = ArchiMateConnector.import_xml(native_xml)
+    assert len(manifest["capabilities"]) == 1
+    assert manifest["capabilities"][0]["id"] == "cap-cust"
+    assert manifest["capabilities"][0]["name"] == "Customer Management"
+    assert len(manifest["systems"]) == 1
+    assert manifest["systems"][0]["id"] == "sys-portal"
+    assert manifest["systems"][0]["capabilities"] == ["cap-cust"]

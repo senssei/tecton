@@ -47,3 +47,37 @@ def test_cli_export_and_import_archimate(tmp_path: Path):
     assert res_import.exit_code == 0
     assert "Parsed" in res_import.stdout
     assert (tmp_path / "archimate_imported_manifest.yaml").exists()
+
+
+def test_cli_export_and_import_archi_native(tmp_path: Path):
+    archi_file = tmp_path / "model.archimate"
+    res_export = runner.invoke(
+        app,
+        ["export", "archi", "--source", str(WORKSPACE), "-o", str(archi_file)],
+    )
+    assert res_export.exit_code == 0
+    assert "Successfully exported native Archi model" in res_export.stdout
+    assert archi_file.exists()
+
+    content = archi_file.read_text(encoding="utf-8")
+    assert 'xmlns:archimate="http://www.archimatetool.com/archimate"' in content
+    assert '<folder name="Strategy"' in content
+    assert '<folder name="Application"' in content
+
+    # Test auto-detection via `export archimate -o file.archimate`
+    auto_file = tmp_path / "auto.archimate"
+    res_auto = runner.invoke(
+        app,
+        ["export", "archimate", "--source", str(WORKSPACE), "-o", str(auto_file)],
+    )
+    assert res_auto.exit_code == 0
+    assert "Successfully exported Archi Native XML (.archimate)" in res_auto.stdout
+    assert auto_file.exists()
+
+    # Import test with native .archimate file
+    res_import = runner.invoke(
+        app,
+        ["import", "archimate", str(archi_file), "-o", str(tmp_path)],
+    )
+    assert res_import.exit_code == 0
+    assert "Parsed" in res_import.stdout

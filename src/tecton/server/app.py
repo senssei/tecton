@@ -499,15 +499,28 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
     @app.get("/api/v1/export/archimate", tags=["Connectors"])
     def export_archimate_model(
         format: str = Query("xml", description="Response format: xml (raw) or json (envelope)"),
+        dialect: str = Query("exchange", description="ArchiMate dialect: 'exchange' (Open Group standard) or 'archi' (Archi native)"),
     ) -> Any:
-        """Export architecture graph to The Open Group ArchiMate Model Exchange XML."""
+        """Export architecture graph to ArchiMate XML (Open Group standard or Archi native)."""
         graph = adapter.graph
-        xml_content = ArchiMateConnector.export_xml(graph)
+        if dialect.lower() == "archi":
+            xml_content = ArchiMateConnector.export_archi_xml(graph)
+        else:
+            xml_content = ArchiMateConnector.export_xml(graph)
+
         if format == "json":
             return {
                 "format": "xml",
+                "dialect": dialect,
                 "content": xml_content,
             }
+        return Response(content=xml_content, media_type="application/xml")
+
+    @app.get("/api/v1/export/archi", tags=["Connectors"])
+    def export_archi_model() -> Any:
+        """Export architecture graph to Archi native format (.archimate) for direct 1-click opening via File > Open."""
+        graph = adapter.graph
+        xml_content = ArchiMateConnector.export_archi_xml(graph)
         return Response(content=xml_content, media_type="application/xml")
 
     return app

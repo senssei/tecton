@@ -231,6 +231,18 @@ def test_server_connector_export_endpoints(client: TestClient):
     assert data_arch["format"] == "xml"
     assert "Tecton Architecture Model" in data_arch["content"]
 
+    # 4. Archi Native format via dialect query
+    res_archi_dialect = client.get("/api/v1/export/archimate?dialect=archi")
+    assert res_archi_dialect.status_code == 200
+    assert "xmlns:archimate=\"http://www.archimatetool.com/archimate\"" in res_archi_dialect.text
+    assert "<folder name=\"Strategy\"" in res_archi_dialect.text
+
+    # 5. Dedicated /api/v1/export/archi endpoint
+    res_archi_dedicated = client.get("/api/v1/export/archi")
+    assert res_archi_dedicated.status_code == 200
+    assert "xmlns:archimate=\"http://www.archimatetool.com/archimate\"" in res_archi_dedicated.text
+    assert "<folder name=\"Application\"" in res_archi_dedicated.text
+
 
 def test_server_portal_endpoints(client: TestClient):
     # Root portal

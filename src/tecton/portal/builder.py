@@ -189,6 +189,7 @@ class PortalBuilder:
             "scenarioComparisons": comparisons,
             "backstage_yaml": BackstageConnector.export_yaml(graph),
             "archimate_xml": ArchiMateConnector.export_xml(graph),
+            "archi_native_xml": ArchiMateConnector.export_archi_xml(graph),
         }
 
         serialized_data = json.dumps(payload, default=str)
