@@ -93,6 +93,32 @@ tecton apm export-matrix --source examples/c4_eam_workspace --format markdown -o
 tecton apm patch-time --source examples/c4_eam_workspace
 ```
 
+### Business Capability Management (BCM) & Heatmaps
+Audit capability realization, uncover unmapped blind spots, and export living heatmaps:
+```bash
+# Render interactive hierarchical capability tree in the terminal
+tecton bcm tree --source examples/c4_eam_workspace
+
+# Run full realization coverage, gap analysis, and capability health scoring
+tecton bcm analyze --source examples/c4_eam_workspace
+
+# Export color-coded Mermaid capability realization heatmap
+tecton bcm heatmap --source examples/c4_eam_workspace
+```
+
+### Technology Risk & Obsolescence Management (TRM) & Blast Radius
+Manage tech radar standards and compute cascading blast radius of EOL components:
+```bash
+# List technology catalog with radar status, EOL milestones, and adoption count
+tecton trm list --source examples/c4_eam_workspace
+
+# Trace direct & cascading transitive dependency blast radius of an obsolete technology
+tecton trm blast-radius tech-legacy-solaris --source examples/c4_eam_workspace
+
+# Export living Mermaid Technology Radar flowchart
+tecton trm export-radar --source examples/c4_eam_workspace
+```
+
 ---
 
 ## 🐶 Dogfooding Tecton

@@ -1,0 +1,142 @@
+"""CLI subcommands for Business Capability Management (BCM)."""
+
+from pathlib import Path
+from typing import Annotated, Optional
+import typer
+from rich.console import Console
+from rich.table import Table
+from rich.tree import Tree
+
+from tecton.engines.bcm_engine import CapabilityHealth
+from tecton.services.bcm_service import BCMService
+
+app = typer.Typer(name="bcm", help="Business Capability Management (BCM) commands.")
+console = Console()
+
+
+def _resolve_source(source: str | None) -> Path:
+    target = Path(source) if source else Path(".")
+    if not target.exists():
+        console.print(f"[bold red]Błąd: Ścieżka '{target}' nie istnieje.[/bold red]")
+        raise typer.Exit(code=1)
+    return target
+
+
+@app.command("tree")
+def show_capability_tree(
+    source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
+) -> None:
+    """Display the hierarchical Business Capability tree and realizing systems."""
+    target_path = _resolve_source(source)
+    service = BCMService(target_path)
+    report = service.analyze()
+
+    root_tree = Tree(f"[bold cyan]Business Capability Map[/bold cyan] ({report.total_capabilities} capabilities)")
+
+    # Group by parent
+    children_map: dict[str | None, list[str]] = {}
+    for c_id, cov in report.coverages.items():
+        children_map.setdefault(cov.parent_id, []).append(c_id)
+
+    # Health color map
+    color_map = {
+        CapabilityHealth.HEALTHY: "green",
+        CapabilityHealth.TOLERABLE: "yellow",
+        CapabilityHealth.AT_RISK: "red",
+        CapabilityHealth.UNMAPPED: "dim",
+        CapabilityHealth.UNKNOWN: "cyan",
+    }
+
+    def add_nodes(parent_id: str | None, current_tree: Tree) -> None:
+        for c_id in sorted(children_map.get(parent_id, [])):
+            cov = report.coverages[c_id]
+            color = color_map.get(cov.health, "white")
+            sys_str = f" [cyan]({len(cov.realizing_system_ids)} apps)[/cyan]" if cov.realizing_system_ids else " [dim](0 apps - GAP)[/dim]"
+            node_label = f"[{color}]{cov.name}[/{color}] [dim]({c_id})[/dim]{sys_str} [{color}][{cov.health.value}][/{color}]"
+            sub_tree = current_tree.add(node_label)
+
+            # If it realizes systems, add them as leaves
+            for s_name in cov.realizing_system_names:
+                sub_tree.add(f"[italic dim]⚙ {s_name}[/italic dim]")
+
+            add_nodes(c_id, sub_tree)
+
+    add_nodes(None, root_tree)
+    console.print()
+    console.print(root_tree)
+    console.print()
+
+
+@app.command("analyze")
+def analyze_capabilities(
+    source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
+) -> None:
+    """Analyze capability coverage, detect unmapped blind spots, and assess health."""
+    target_path = _resolve_source(source)
+    service = BCMService(target_path)
+    report = service.analyze()
+
+    console.print("\n[bold]1. Podsumowanie Pokrycia Zdolności Biznesowych[/bold]")
+    summary_table = Table()
+    summary_table.add_column("Metryka", style="bold")
+    summary_table.add_column("Wartość", justify="right")
+
+    summary_table.add_row("Wszystkie Zdolności Biznesowe", str(report.total_capabilities))
+    summary_table.add_row("Zdolności Pokryte Systemami", f"[green]{report.mapped_capabilities}[/green]")
+    summary_table.add_row("Białe Plamy (Gaps / 0 systemów)", f"[red]{len(report.orphaned_capabilities)}[/red]")
+    summary_table.add_row("Klastry Nadmiarowości (Hotspots)", f"[yellow]{len(report.overprovisioned_capabilities)}[/yellow]")
+    summary_table.add_row("Procent Pokrycia Portfela", f"[bold cyan]{report.coverage_percentage:.1f}%[/bold cyan]")
+    console.print(summary_table)
+
+    if report.orphaned_capabilities:
+        console.print("\n[bold red]⚠️ Wykryte Luki w Pokryciu (Brak wsparcia systemowego / Blind Spots):[/bold red]")
+        for c_id in report.orphaned_capabilities:
+            cov = report.coverages[c_id]
+            console.print(f"  • [red]{cov.name}[/red] [dim]({c_id})[/dim]")
+
+    if report.overprovisioned_capabilities:
+        console.print("\n[bold yellow]💡 Wykryte Hotspoty Nadmiarowości (Kandydaci do konsolidacji):[/bold yellow]")
+        for c_id in report.overprovisioned_capabilities:
+            cov = report.coverages[c_id]
+            console.print(f"  • [yellow]{cov.name}[/yellow] ({len(cov.realizing_system_ids)} systemów): {', '.join(cov.realizing_system_names)}")
+
+    console.print("\n[bold]2. Tabela Stanu Zdrowia Zdolności Biznesowych[/bold]")
+    table = Table()
+    table.add_column("ID", style="dim", no_wrap=True)
+    table.add_column("Nazwa Zdolności", style="bold")
+    table.add_column("Poziom", justify="center")
+    table.add_column("Stan Zdrowia", justify="center")
+    table.add_column("Liczba Aplikacji", justify="right")
+    table.add_column("Realizujące Systemy")
+
+    for c_id, cov in sorted(report.coverages.items(), key=lambda x: x[1].name):
+        color = "green" if cov.health == CapabilityHealth.HEALTHY else "yellow" if cov.health == CapabilityHealth.TOLERABLE else "red" if cov.health == CapabilityHealth.AT_RISK else "dim"
+        table.add_row(
+            c_id,
+            cov.name,
+            cov.level or "-",
+            f"[{color}]{cov.health.value}[/{color}]",
+            str(len(cov.realizing_system_ids)),
+            ", ".join(cov.realizing_system_names) or "[dim]-[/dim]",
+        )
+
+    console.print(table)
+    console.print()
+
+
+@app.command("heatmap")
+def export_heatmap(
+    source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
+    output: Annotated[Optional[str], typer.Option("--output", "-o", help="Output file path (default stdout)")] = None,
+) -> None:
+    """Generate color-coded Mermaid flowchart heatmap of the capability architecture."""
+    target_path = _resolve_source(source)
+    service = BCMService(target_path)
+    chart = service.export_heatmap()
+
+    if output:
+        out_path = Path(output)
+        out_path.write_text(chart, encoding="utf-8")
+        console.print(f"[green]Mapa ciepła Mermaid zapisana w pliku:[/green] {out_path.resolve()}")
+    else:
+        console.print(chart)
