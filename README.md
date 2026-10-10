@@ -167,17 +167,22 @@ tecton roadmap compare plateau-2026-as-is plateau-2027-target --source examples/
 tecton roadmap export-gantt --source examples/c4_eam_workspace
 ```
 
-### Headless Architecture Intelligence Server (`tecton serve`)
-Serve real-time architecture intelligence, quality gates, and living diagram generation via high-performance REST API:
+### Interactive Architecture Intelligence Web Portal & Server (`tecton portal` / `tecton serve`)
+Serve the interactive visual Web Portal, live OpenAPI REST API, and living diagrams directly in your browser:
 ```bash
-# Launch Tecton API server (auto-binds to 127.0.0.1:8000 by default)
-tecton serve --source examples/c4_eam_workspace
+# Launch interactive Living Web Portal & REST API server
+tecton portal --source examples/c4_eam_workspace
 
-# Launch with custom host and port
-tecton serve --source examples/c4_eam_workspace --host 0.0.0.0 --port 8080
+# Or use standard serve command (auto-binds to 127.0.0.1:8000)
+tecton serve --source examples/c4_eam_workspace --host 0.0.0.0 --port 8000
 
-# Interactive OpenAPI / Swagger UI documentation is available at:
-# http://127.0.0.1:8000/docs
+# Open in browser:
+# • Interactive Web Portal:  http://127.0.0.1:8000/
+# • OpenAPI / Swagger UI:    http://127.0.0.1:8000/docs
+# • ReDoc Documentation:     http://127.0.0.1:8000/redoc
+
+# Export 100% self-contained, offline-first HTML portal bundle (for GitHub Pages / S3)
+tecton export portal --source examples/c4_eam_workspace -o dist/portal
 ```
 
 ### Open EA Ecosystem Connectors (`tecton export` & `tecton import`)

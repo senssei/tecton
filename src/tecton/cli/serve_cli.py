@@ -40,13 +40,14 @@ def serve_command(
     app = create_app(resolved_path)
 
     console.print(Panel(
-        f"[bold cyan]Tecton Architecture Intelligence REST API[/bold cyan]\n\n"
+        f"[bold cyan]Tecton Architecture Intelligence Server & Web Portal[/bold cyan]\n\n"
         f"• Workspace: [bold green]{resolved_path}[/bold green]\n"
-        f"• Server URL: [bold yellow]http://{host}:{port}[/bold yellow]\n"
+        f"• Web Portal: [bold yellow]http://{host}:{port}/[/bold yellow]\n"
         f"• OpenAPI Docs: [bold blue]http://{host}:{port}/docs[/bold blue]\n"
         f"• ReDoc Portal: [bold magenta]http://{host}:{port}/redoc[/bold magenta]\n"
-        f"• Endpoints: APM, BCM, TRM, Data Lineage, Quality Gate, Diagrams",
-        title="Tecton Server Mode",
+        f"• Features: APM, BCM, TRM, Data Lineage, Roadmap Gantt, Backstage/ArchiMate Exports",
+        title="🏛️ Tecton Living Architecture Portal",
+        border_style="indigo",
     ))
 
     uvicorn.run(app, host=host, port=port)

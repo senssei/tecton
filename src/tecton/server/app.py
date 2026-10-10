@@ -8,12 +8,14 @@ from pathlib import Path
 from typing import Any, Optional
 from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from tecton.adapters.git_adapter import GitRepositoryAdapter
 from tecton.connectors import ArchiMateConnector, BackstageConnector
 from tecton.dsl.linter import GraphLinter
 from tecton.exporters.mermaid import MermaidExporter
+from tecton.portal.builder import PortalBuilder
 from tecton.services.apm_service import APMService
 from tecton.services.bcm_service import BCMService
 from tecton.services.lineage_service import LineageService
@@ -77,6 +79,14 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
 
     # State holding the workspace adapter and services
     adapter = GitRepositoryAdapter(resolved_path)
+
+    # --- Architecture Intelligence Web Portal & Dashboard ---
+    @app.get("/", response_class=HTMLResponse, tags=["Portal"], include_in_schema=False)
+    @app.get("/portal", response_class=HTMLResponse, tags=["Portal"], include_in_schema=False)
+    def get_portal() -> HTMLResponse:
+        """Serve the living interactive Architecture Intelligence Web Portal & Dashboard."""
+        html = PortalBuilder.build_dynamic_portal_html()
+        return HTMLResponse(content=html, status_code=200)
 
     @app.get("/api/v1/health", response_model=HealthResponse, tags=["System"])
     def get_health() -> HealthResponse:

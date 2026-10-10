@@ -8,6 +8,7 @@ from rich.console import Console
 from tecton.connectors.archimate import ArchiMateConnector
 from tecton.connectors.backstage import BackstageConnector
 from tecton.dsl.parser import C4EAMParser
+from tecton.portal.builder import PortalBuilder
 
 app = typer.Typer(name="export", help="Export architecture models to external EA ecosystems (Backstage, ArchiMate).")
 console = Console()
@@ -58,3 +59,16 @@ def export_archimate(
         console.print(f"[bold green]✓ Successfully exported ArchiMate Open Exchange XML to '{output}'[/bold green]")
     else:
         console.print(xml_content)
+
+
+@app.command("portal")
+def export_portal(
+    source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
+    output_dir: Annotated[str, typer.Option("--output-dir", "-o", help="Target directory for generated portal (defaults to dist/)")] = "dist",
+) -> None:
+    """Export self-contained, offline-first Architecture Intelligence Web Portal HTML bundle."""
+    target_path = _resolve_source(source)
+    graph = C4EAMParser().parse_directory(target_path)
+    out_file = PortalBuilder.export_portal(graph, output_dir)
+    console.print(f"[bold green]✓ Successfully exported living Architecture Portal to '{out_file}'[/bold green]")
+

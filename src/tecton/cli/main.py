@@ -32,6 +32,7 @@ app.command(name="validate", help="Validate architecture DSL manifests and enfor
 app.command(name="lint", help="Alias for validate: Lint architecture DSL manifests.")(validate_command)
 app.command(name="diff", help="Semantic architectural diff between Git revisions or architecture directories.")(diff_command)
 app.command(name="serve", help="Launch headless Architecture Intelligence REST API server.")(serve_command)
+app.command(name="portal", help="Launch interactive Architecture Intelligence Web Portal & Dashboard.")(serve_command)
 
 
 def version_callback(value: bool) -> None:

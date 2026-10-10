@@ -232,3 +232,19 @@ def test_server_connector_export_endpoints(client: TestClient):
     assert "Tecton Architecture Model" in data_arch["content"]
 
 
+def test_server_portal_endpoints(client: TestClient):
+    # Root portal
+    res_root = client.get("/")
+    assert res_root.status_code == 200
+    assert "text/html" in res_root.headers["content-type"]
+    assert "TECTON" in res_root.text
+    assert "Architecture Intelligence" in res_root.text
+
+    # /portal alias
+    res_portal = client.get("/portal")
+    assert res_portal.status_code == 200
+    assert "text/html" in res_portal.headers["content-type"]
+    assert "Executive Overview" in res_portal.text
+
+
+
