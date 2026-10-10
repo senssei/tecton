@@ -112,6 +112,9 @@ plateaus:
     assert 'xsi:type="Plateau"' in xml_str
     assert 'xsi:type="Realization"' in xml_str
     assert 'xsi:type="Composition"' in xml_str
+    assert '<views>' in xml_str
+    assert '<diagrams>' in xml_str
+    assert "C4 System Landscape" in xml_str
 
 
 def test_archimate_connector_export_archi_xml():
@@ -161,6 +164,9 @@ relationships:
     assert 'xsi:type="archimate:RealizationRelationship"' in archi_xml
     assert 'name="Realizes"' in archi_xml
     assert 'xsi:type="archimate:ArchimateDiagramModel"' in archi_xml
+    assert 'name="C4 System Landscape"' in archi_xml
+    assert 'name="Business Capability Map"' in archi_xml
+    assert 'name="Transformation Roadmap"' in archi_xml
 
 
 def test_archimate_connector_import_xml():
