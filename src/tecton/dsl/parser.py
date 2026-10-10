@@ -11,6 +11,8 @@ from tecton.dsl.schema import (
     BusinessCapabilityDef,
     C4EAMManifest,
     ContainerDef,
+    DataObjectDef,
+    InterfaceDef,
     RelationshipDef,
     SoftwareSystemDef,
     TechnologyDef,
@@ -26,6 +28,8 @@ class SymbolTable:
     containers: dict[str, ContainerDef] = field(default_factory=dict)
     technologies: dict[str, TechnologyDef] = field(default_factory=dict)
     relationships: list[RelationshipDef] = field(default_factory=list)
+    data_objects: dict[str, DataObjectDef] = field(default_factory=dict)
+    interfaces: dict[str, InterfaceDef] = field(default_factory=dict)
     symbol_origins: dict[str, str] = field(default_factory=dict)
     duplicate_ids: list[tuple[str, str, str]] = field(default_factory=list)
 
@@ -56,6 +60,20 @@ class SymbolTable:
         else:
             self.symbol_origins[tech.id] = origin
         self.technologies[tech.id] = tech
+
+    def register_data_object(self, obj: DataObjectDef, origin: str) -> None:
+        if obj.id in self.symbol_origins:
+            self.duplicate_ids.append((obj.id, self.symbol_origins[obj.id], origin))
+        else:
+            self.symbol_origins[obj.id] = origin
+        self.data_objects[obj.id] = obj
+
+    def register_interface(self, iface: InterfaceDef, origin: str) -> None:
+        if iface.id in self.symbol_origins:
+            self.duplicate_ids.append((iface.id, self.symbol_origins[iface.id], origin))
+        else:
+            self.symbol_origins[iface.id] = origin
+        self.interfaces[iface.id] = iface
 
     def register_relationship(self, rel: RelationshipDef) -> None:
         self.relationships.append(rel)
@@ -93,6 +111,14 @@ class CompiledGraph:
         return self.table.technologies
 
     @property
+    def data_objects(self) -> dict[str, DataObjectDef]:
+        return self.table.data_objects
+
+    @property
+    def interfaces(self) -> dict[str, InterfaceDef]:
+        return self.table.interfaces
+
+    @property
     def relationships(self) -> list[RelationshipDef]:
         return self.table.relationships
 
@@ -111,6 +137,8 @@ class CompiledGraph:
             | set(self.table.systems.keys())
             | set(self.table.containers.keys())
             | set(self.table.technologies.keys())
+            | set(self.table.data_objects.keys())
+            | set(self.table.interfaces.keys())
         )
 
     def get_entity(self, entity_id: str) -> Any | None:
@@ -123,6 +151,10 @@ class CompiledGraph:
             return self.table.containers[entity_id]
         if entity_id in self.table.technologies:
             return self.table.technologies[entity_id]
+        if entity_id in self.table.data_objects:
+            return self.table.data_objects[entity_id]
+        if entity_id in self.table.interfaces:
+            return self.table.interfaces[entity_id]
         return None
 
     def outgoing_relationships(self, source_id: str) -> list[RelationshipDef]:
@@ -202,7 +234,10 @@ class C4EAMParser:
         elif isinstance(doc, dict):
             # Check if it has collection keys: capabilities, systems, etc.
             has_collections = any(
-                k in doc for k in ("capabilities", "systems", "containers", "relationships", "technologies")
+                k in doc for k in (
+                    "capabilities", "systems", "containers", "relationships",
+                    "technologies", "data_objects", "interfaces"
+                )
             )
             if has_collections:
                 for cap_raw in doc.get("capabilities", []):
@@ -215,6 +250,10 @@ class C4EAMParser:
                     table.register_relationship(RelationshipDef.model_validate(rel_raw))
                 for tech_raw in doc.get("technologies", []):
                     table.register_technology(TechnologyDef.model_validate(tech_raw), origin)
+                for data_raw in doc.get("data_objects", []):
+                    table.register_data_object(DataObjectDef.model_validate(data_raw), origin)
+                for iface_raw in doc.get("interfaces", []):
+                    table.register_interface(InterfaceDef.model_validate(iface_raw), origin)
             else:
                 self._ingest_single_dict(doc, origin, table)
 
@@ -230,9 +269,17 @@ class C4EAMParser:
             table.register_relationship(RelationshipDef.model_validate(item))
         elif kind in ("technology",):
             table.register_technology(TechnologyDef.model_validate(item), origin)
+        elif kind in ("dataobject", "data_object", "data-object"):
+            table.register_data_object(DataObjectDef.model_validate(item), origin)
+        elif kind in ("interface", "api", "contract"):
+            table.register_interface(InterfaceDef.model_validate(item), origin)
         else:
             # Heuristic detection based on required fields
-            if "system_id" in item and "id" in item and "name" in item:
+            if "provider_system_id" in item and "id" in item and "name" in item:
+                table.register_interface(InterfaceDef.model_validate(item), origin)
+            elif "classification" in item and "id" in item and "name" in item:
+                table.register_data_object(DataObjectDef.model_validate(item), origin)
+            elif "system_id" in item and "id" in item and "name" in item:
                 table.register_container(ContainerDef.model_validate(item), origin)
             elif "source_id" in item and "target_id" in item:
                 table.register_relationship(RelationshipDef.model_validate(item))

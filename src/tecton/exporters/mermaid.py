@@ -132,3 +132,39 @@ class MermaidExporter:
             lines.append("    end")
 
         return "\n".join(lines)
+
+    @staticmethod
+    def to_data_lineage_flowchart(
+        report: Any,
+        title: str = "Data Lineage Trajectory",
+    ) -> str:
+        """Generate a Mermaid flowchart illustrating the end-to-end lineage of a data object."""
+        lines = [
+            "flowchart LR",
+            f"    %% {title} - {report.data_object_name} ({report.classification.value})",
+            "    classDef producer fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;",
+            "    classDef consumer fill:#d1ecf1,stroke:#17a2b8,stroke-width:2px,color:#0c5460;",
+            "    classDef node_default fill:#f8f9fa,stroke:#6c757d,stroke-width:2px,color:#212529;",
+        ]
+
+        def sanitize_id(raw_id: str) -> str:
+            return "sys_" + raw_id.replace("-", "_").replace(".", "_")
+
+        # Declare nodes
+        for s_id in report.participating_systems:
+            nid = sanitize_id(s_id)
+            node_class = (
+                "producer" if s_id in report.producers
+                else "consumer" if s_id in report.consumers
+                else "node_default"
+            )
+            lines.append(f'    {nid}["{s_id}"]:::{node_class}')
+
+        # Declare edges
+        for edge in report.flow_edges:
+            src = sanitize_id(edge.source_system_id)
+            dst = sanitize_id(edge.target_system_id)
+            edge_label = f"{edge.protocol}: {edge.channel_name}".replace('"', "'")
+            lines.append(f'    {src} -->|"{edge_label}"| {dst}')
+
+        return "\n".join(lines)

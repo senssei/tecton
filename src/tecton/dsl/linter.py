@@ -161,7 +161,39 @@ class GraphLinter:
                     file_origin=origin,
                 )
 
-        # 4. Relationships endpoints integrity
+        # 4. Interface and Data Object integrity
+        has_data_catalog = len(graph.data_objects) > 0
+        for iface in graph.interfaces.values():
+            origin = graph.symbol_origins.get(iface.id)
+            if iface.provider_system_id not in graph.systems:
+                report.add_issue(
+                    severity=LintSeverity.ERROR,
+                    rule="REF_INTEGRITY_DANGLING_INTERFACE_PROVIDER",
+                    message=f"Interface '{iface.id}' references non-existent provider system '{iface.provider_system_id}'",
+                    entity_id=iface.id,
+                    file_origin=origin,
+                )
+            for consumer_id in iface.consumer_system_ids:
+                if consumer_id not in graph.systems:
+                    report.add_issue(
+                        severity=LintSeverity.ERROR,
+                        rule="REF_INTEGRITY_DANGLING_INTERFACE_CONSUMER",
+                        message=f"Interface '{iface.id}' references non-existent consumer system '{consumer_id}'",
+                        entity_id=iface.id,
+                        file_origin=origin,
+                    )
+            if has_data_catalog:
+                for d_id in iface.data_objects:
+                    if d_id not in graph.data_objects:
+                        report.add_issue(
+                            severity=LintSeverity.ERROR,
+                            rule="REF_INTEGRITY_DANGLING_INTERFACE_DATA_OBJECT",
+                            message=f"Interface '{iface.id}' references non-existent data object '{d_id}'",
+                            entity_id=iface.id,
+                            file_origin=origin,
+                        )
+
+        # 5. Relationships endpoints integrity
         for rel in graph.relationships:
             if rel.source_id not in all_ids:
                 report.add_issue(
@@ -177,6 +209,15 @@ class GraphLinter:
                     message=f"Relationship target '{rel.target_id}' does not exist in architecture graph",
                     entity_id=rel.target_id,
                 )
+            if has_data_catalog:
+                for d_id in rel.data_objects:
+                    if d_id not in graph.data_objects:
+                        report.add_issue(
+                            severity=LintSeverity.ERROR,
+                            rule="REF_INTEGRITY_DANGLING_RELATIONSHIP_DATA_OBJECT",
+                            message=f"Relationship '{rel.source_id}->{rel.target_id}' references non-existent data object '{d_id}'",
+                            entity_id=rel.source_id,
+                        )
 
     def _check_capability_cycles(self, graph: CompiledGraph, report: LintReport) -> None:
         """Verify that capability parent relationships form a strict Directed Acyclic Forest."""

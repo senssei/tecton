@@ -4,10 +4,16 @@ relationships:
     target_id: sys-order-router
     relation_type: depends_on
     technology: REST / JSON over TLS
+    data_objects:
+      - do-customer-profile
+      - do-order-record
     description: Sends submitted orders for regional routing
 
   - source_id: sys-order-router
     target_id: sys-legacy-billing
     relation_type: integrates_with
     technology: Apache Kafka Events
+    data_objects:
+      - do-customer-profile
+      - do-order-record
     description: Publishes order fulfillment events for invoice generation

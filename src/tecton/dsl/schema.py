@@ -87,8 +87,9 @@ class RelationshipDef(BaseModel):
 
     source_id: str = Field(description="Slug ID of source entity")
     target_id: str = Field(description="Slug ID of target entity")
-    relation_type: str = Field(default="depends_on", description="Relationship semantics (e.g., depends_on, realizes, integrates_with, uses)")
+    relation_type: str = Field(default="depends_on", description="Relationship semantics (e.g., depends_on, realizes, integrates_with, uses, data_flow)")
     technology: str | None = Field(default=None, description="Integration protocol or tech")
+    data_objects: list[str] = Field(default_factory=list, description="IDs of data objects transferred across this relationship")
     description: str | None = None
 
     @field_validator("source_id", "target_id")
@@ -97,6 +98,54 @@ class RelationshipDef(BaseModel):
         clean = v.strip()
         if not clean:
             raise ValueError("Relationship endpoint ID must not be empty")
+        return clean
+
+
+class DataClassification(str, Enum):
+    """Data privacy and security classification tiers."""
+
+    PUBLIC = "PUBLIC"
+    INTERNAL = "INTERNAL"
+    CONFIDENTIAL = "CONFIDENTIAL"
+    RESTRICTED_PII = "RESTRICTED_PII"
+    PCI_DSS = "PCI_DSS"
+
+
+class DataObjectDef(BaseModel):
+    """Business Data Object / Entity cataloged in Enterprise Architecture."""
+
+    id: str
+    name: str
+    classification: DataClassification = DataClassification.INTERNAL
+    description: str | None = None
+    owner: str | None = None
+
+    @field_validator("id")
+    @classmethod
+    def id_must_be_non_empty(cls, v: str) -> str:
+        clean = v.strip()
+        if not clean:
+            raise ValueError("DataObject id must not be empty")
+        return clean
+
+
+class InterfaceDef(BaseModel):
+    """Communication interface or API contract exposed by a provider system."""
+
+    id: str
+    name: str
+    protocol: str = Field(default="REST", description="Integration protocol (e.g., REST, GraphQL, gRPC, Kafka, AMQP)")
+    provider_system_id: str = Field(description="Slug ID of provider system exposing the interface")
+    consumer_system_ids: list[str] = Field(default_factory=list, description="Slug IDs of consumer systems")
+    data_objects: list[str] = Field(default_factory=list, description="IDs of data objects transferred by this interface")
+    description: str | None = None
+
+    @field_validator("id")
+    @classmethod
+    def id_must_be_non_empty(cls, v: str) -> str:
+        clean = v.strip()
+        if not clean:
+            raise ValueError("Interface id must not be empty")
         return clean
 
 
@@ -164,3 +213,5 @@ class C4EAMManifest(BaseModel):
     containers: list[ContainerDef] = Field(default_factory=list)
     relationships: list[RelationshipDef] = Field(default_factory=list)
     technologies: list[TechnologyDef] = Field(default_factory=list)
+    data_objects: list[DataObjectDef] = Field(default_factory=list)
+    interfaces: list[InterfaceDef] = Field(default_factory=list)

@@ -1,0 +1,23 @@
+# Enterprise Interface Contracts & API Definitions
+interfaces:
+  - id: iface-crm-order-submission
+    name: CRM Order Submission API
+    protocol: REST / OpenAPI 3.0
+    provider_system_id: sys-crm-core
+    consumer_system_ids:
+      - sys-order-router
+    data_objects:
+      - do-customer-profile
+      - do-order-record
+    description: Synchronous HTTPS endpoint for publishing approved customer sales orders
+
+  - id: iface-order-fulfillment-stream
+    name: Order Fulfillment Event Stream
+    protocol: Apache Kafka
+    provider_system_id: sys-order-router
+    consumer_system_ids:
+      - sys-legacy-billing
+    data_objects:
+      - do-customer-profile
+      - do-order-record
+    description: Asynchronous event stream broadcasting routed orders for billing and invoicing

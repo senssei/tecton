@@ -3,6 +3,7 @@
 from tecton.services.apm_service import APMAnalysisResult, APMService
 from tecton.services.bcm_service import BCMService
 from tecton.services.diff_service import DiffService
+from tecton.services.lineage_service import LineageService
 from tecton.services.trm_service import TRMService
 
 __all__ = [
@@ -10,5 +11,6 @@ __all__ = [
     "APMService",
     "BCMService",
     "DiffService",
+    "LineageService",
     "TRMService",
 ]

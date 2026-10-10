@@ -71,11 +71,13 @@ def test_parser_directory_c4_workspace():
     parser = C4EAMParser()
     graph = parser.parse_directory(workspace)
 
-    assert len(graph.files_parsed) == 4
+    assert len(graph.files_parsed) == 6
     assert len(graph.capabilities) >= 6
     assert len(graph.systems) == 3
     assert len(graph.technologies) >= 4
     assert len(graph.relationships) == 2
+    assert len(graph.data_objects) == 3
+    assert len(graph.interfaces) == 2
 
     # Verify relationship index
     outgoing = graph.outgoing_relationships("sys-crm-core")

@@ -135,6 +135,22 @@ tecton diff main HEAD --format pr-comment -o pr_review.md
 tecton diff main HEAD --fail-on-risk
 ```
 
+### Interface Contracts, Data Architecture & Lineage (`tecton data`)
+Catalog business data objects, interface contracts, trace end-to-end data lineage across systems, and audit compliance risks (GDPR/PII/PCI-DSS):
+```bash
+# List enterprise business data objects with privacy and compliance classifications
+tecton data list --source examples/c4_eam_workspace
+
+# List interface contracts, integration protocols, and carried data payloads
+tecton data interfaces --source examples/c4_eam_workspace
+
+# Trace end-to-end data lineage and audit privacy/compliance risks across the architecture graph
+tecton data lineage do-customer-profile --source examples/c4_eam_workspace
+
+# Export living Mermaid flowchart of data lineage trajectory across producer and consumer systems
+tecton data export-lineage do-customer-profile --source examples/c4_eam_workspace
+```
+
 ---
 
 ## 🐶 Dogfooding Tecton

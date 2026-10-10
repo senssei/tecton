@@ -1,0 +1,19 @@
+# Enterprise Business Data Objects & Information Catalog
+data_objects:
+  - id: do-customer-profile
+    name: Customer PII Profile
+    classification: RESTRICTED_PII
+    owner: Data Privacy Office
+    description: Master customer entity including name, address, tax ID, and phone number
+
+  - id: do-order-record
+    name: Sales Order Record
+    classification: INTERNAL
+    owner: Commercial Operations
+    description: Transactional order lines, shipping destination, and line items
+
+  - id: do-invoice-document
+    name: Commercial Invoice Document
+    classification: CONFIDENTIAL
+    owner: Financial Operations
+    description: Accounting ledger entries and tax billing records
