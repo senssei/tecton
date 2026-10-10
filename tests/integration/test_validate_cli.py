@@ -38,7 +38,7 @@ def test_cli_validate_json_format():
     assert result.exit_code == 0
     data = json.loads(result.output)
     assert data["valid"] is True
-    assert data["files_scanned"] == 6
+    assert data["files_scanned"] == 7
     assert data["error_count"] == 0
     assert data["warning_count"] >= 1
 

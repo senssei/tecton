@@ -1,8 +1,9 @@
 """Mermaid Diagram Exporters for Enterprise Architecture Visualizations."""
 
 from typing import Any
+from datetime import date
 from tecton.core.models import Application
-from tecton.dsl.schema import TechnologyDef, TechnologyStatus
+from tecton.dsl.schema import PlateauDef, TechnologyDef, TechnologyStatus, WorkPackageDef, WorkPackageStatus
 from tecton.engines.bcm_engine import BCMReport, CapabilityHealth
 from tecton.engines.trm_engine import TechnologyRiskItem
 
@@ -168,3 +169,60 @@ class MermaidExporter:
             lines.append(f'    {src} -->|"{edge_label}"| {dst}')
 
         return "\n".join(lines)
+
+    @staticmethod
+    def to_roadmap_gantt(
+        plateaus: list[PlateauDef],
+        work_packages: list[WorkPackageDef],
+        title: str = "Enterprise Architecture Transformation Roadmap",
+    ) -> str:
+        """Generate a Mermaid Gantt diagram visualizing plateaus milestones and work package schedule."""
+        lines: list[str] = [
+            "gantt",
+            f"    title {title}",
+            "    dateFormat YYYY-MM-DD",
+            "    axisFormat %Y-%m",
+        ]
+
+        if plateaus:
+            lines.append("    section Plateaus")
+            for p in plateaus:
+                date_str = str(p.target_date) if p.target_date else str(date.today())
+                safe_name = p.name.replace(":", " -")
+                lines.append(f"    {safe_name} :milestone, {p.id}, {date_str}, 0d")
+
+        if work_packages:
+            lines.append("    section Work Packages")
+            wps_sorted = sorted(
+                work_packages,
+                key=lambda w: (
+                    0 if w.start_date else 1,
+                    str(w.start_date) if w.start_date else "9999-99-99",
+                ),
+            )
+            for wp in wps_sorted:
+                safe_name = wp.name.replace(":", " -")
+                status_modifier = ""
+                if wp.status == WorkPackageStatus.COMPLETED:
+                    status_modifier = "done, "
+                elif wp.status == WorkPackageStatus.IN_PROGRESS:
+                    status_modifier = "active, "
+                elif wp.status == WorkPackageStatus.CANCELLED:
+                    status_modifier = "crit, "
+
+                if wp.depends_on:
+                    dep_id = wp.depends_on[0]
+                    duration = "30d"
+                    if wp.start_date and wp.target_date:
+                        days = (wp.target_date - wp.start_date).days
+                        duration = f"{max(days, 1)}d"
+                    lines.append(f"    {safe_name} :{status_modifier}{wp.id}, after {dep_id}, {duration}")
+                elif wp.start_date and wp.target_date:
+                    lines.append(f"    {safe_name} :{status_modifier}{wp.id}, {wp.start_date}, {wp.target_date}")
+                elif wp.start_date:
+                    lines.append(f"    {safe_name} :{status_modifier}{wp.id}, {wp.start_date}, 30d")
+                else:
+                    lines.append(f"    {safe_name} :{status_modifier}{wp.id}, {date.today()}, 30d")
+
+        return "\n".join(lines)
+

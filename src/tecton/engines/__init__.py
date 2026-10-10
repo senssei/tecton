@@ -5,6 +5,13 @@ from tecton.engines.diff_engine import ArchitectureDiffReport, ChangeType, DiffE
 from tecton.engines.lifecycle_validator import LifecycleIssue, LifecycleValidationReport, LifecycleValidator
 from tecton.engines.lineage_engine import DataFlowEdge, DataLineageReport, LineageEngine
 from tecton.engines.redundancy import RedundancyDetectionEngine
+from tecton.engines.roadmap_engine import (
+    PlateauComparison,
+    PlateauState,
+    RoadmapAnalysisReport,
+    RoadmapEngine,
+    TransitionalGap,
+)
 from tecton.engines.time_scoring import TimeScoringEngine
 from tecton.engines.trm_engine import BlastRadiusReport, TechnologyRiskItem, TRMEngine, TRMReport
 
@@ -24,9 +31,14 @@ __all__ = [
     "LifecycleValidationReport",
     "LifecycleValidator",
     "LineageEngine",
+    "PlateauComparison",
+    "PlateauState",
     "RedundancyDetectionEngine",
+    "RoadmapAnalysisReport",
+    "RoadmapEngine",
     "TechnologyRiskItem",
     "TimeScoringEngine",
+    "TransitionalGap",
     "TRMEngine",
     "TRMReport",
 ]

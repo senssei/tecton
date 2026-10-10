@@ -13,9 +13,11 @@ from tecton.dsl.schema import (
     ContainerDef,
     DataObjectDef,
     InterfaceDef,
+    PlateauDef,
     RelationshipDef,
     SoftwareSystemDef,
     TechnologyDef,
+    WorkPackageDef,
 )
 
 
@@ -30,6 +32,8 @@ class SymbolTable:
     relationships: list[RelationshipDef] = field(default_factory=list)
     data_objects: dict[str, DataObjectDef] = field(default_factory=dict)
     interfaces: dict[str, InterfaceDef] = field(default_factory=dict)
+    plateaus: dict[str, PlateauDef] = field(default_factory=dict)
+    work_packages: dict[str, WorkPackageDef] = field(default_factory=dict)
     symbol_origins: dict[str, str] = field(default_factory=dict)
     duplicate_ids: list[tuple[str, str, str]] = field(default_factory=list)
 
@@ -75,6 +79,20 @@ class SymbolTable:
             self.symbol_origins[iface.id] = origin
         self.interfaces[iface.id] = iface
 
+    def register_plateau(self, plateau: PlateauDef, origin: str) -> None:
+        if plateau.id in self.symbol_origins:
+            self.duplicate_ids.append((plateau.id, self.symbol_origins[plateau.id], origin))
+        else:
+            self.symbol_origins[plateau.id] = origin
+        self.plateaus[plateau.id] = plateau
+
+    def register_work_package(self, wp: WorkPackageDef, origin: str) -> None:
+        if wp.id in self.symbol_origins:
+            self.duplicate_ids.append((wp.id, self.symbol_origins[wp.id], origin))
+        else:
+            self.symbol_origins[wp.id] = origin
+        self.work_packages[wp.id] = wp
+
     def register_relationship(self, rel: RelationshipDef) -> None:
         self.relationships.append(rel)
 
@@ -119,6 +137,14 @@ class CompiledGraph:
         return self.table.interfaces
 
     @property
+    def plateaus(self) -> dict[str, PlateauDef]:
+        return self.table.plateaus
+
+    @property
+    def work_packages(self) -> dict[str, WorkPackageDef]:
+        return self.table.work_packages
+
+    @property
     def relationships(self) -> list[RelationshipDef]:
         return self.table.relationships
 
@@ -139,6 +165,8 @@ class CompiledGraph:
             | set(self.table.technologies.keys())
             | set(self.table.data_objects.keys())
             | set(self.table.interfaces.keys())
+            | set(self.table.plateaus.keys())
+            | set(self.table.work_packages.keys())
         )
 
     def get_entity(self, entity_id: str) -> Any | None:
@@ -155,6 +183,10 @@ class CompiledGraph:
             return self.table.data_objects[entity_id]
         if entity_id in self.table.interfaces:
             return self.table.interfaces[entity_id]
+        if entity_id in self.table.plateaus:
+            return self.table.plateaus[entity_id]
+        if entity_id in self.table.work_packages:
+            return self.table.work_packages[entity_id]
         return None
 
     def outgoing_relationships(self, source_id: str) -> list[RelationshipDef]:
@@ -236,7 +268,7 @@ class C4EAMParser:
             has_collections = any(
                 k in doc for k in (
                     "capabilities", "systems", "containers", "relationships",
-                    "technologies", "data_objects", "interfaces"
+                    "technologies", "data_objects", "interfaces", "plateaus", "work_packages"
                 )
             )
             if has_collections:
@@ -254,6 +286,10 @@ class C4EAMParser:
                     table.register_data_object(DataObjectDef.model_validate(data_raw), origin)
                 for iface_raw in doc.get("interfaces", []):
                     table.register_interface(InterfaceDef.model_validate(iface_raw), origin)
+                for p_raw in doc.get("plateaus", []):
+                    table.register_plateau(PlateauDef.model_validate(p_raw), origin)
+                for wp_raw in doc.get("work_packages", []):
+                    table.register_work_package(WorkPackageDef.model_validate(wp_raw), origin)
             else:
                 self._ingest_single_dict(doc, origin, table)
 
@@ -273,6 +309,10 @@ class C4EAMParser:
             table.register_data_object(DataObjectDef.model_validate(item), origin)
         elif kind in ("interface", "api", "contract"):
             table.register_interface(InterfaceDef.model_validate(item), origin)
+        elif kind in ("plateau", "architectureplateau", "architecture_plateau"):
+            table.register_plateau(PlateauDef.model_validate(item), origin)
+        elif kind in ("workpackage", "work_package", "work-package", "project", "initiative"):
+            table.register_work_package(WorkPackageDef.model_validate(item), origin)
         else:
             # Heuristic detection based on required fields
             if "provider_system_id" in item and "id" in item and "name" in item:
@@ -287,6 +327,10 @@ class C4EAMParser:
                 table.register_capability(BusinessCapabilityDef.model_validate(item), origin)
             elif ("status" in item or "eol_date" in item or "category" in item) and "id" in item and "name" in item:
                 table.register_technology(TechnologyDef.model_validate(item), origin)
+            elif ("active_system_ids" in item or "decommissioned_system_ids" in item) and "id" in item and "name" in item:
+                table.register_plateau(PlateauDef.model_validate(item), origin)
+            elif ("from_plateau_id" in item or "to_plateau_id" in item or "depends_on" in item) and "id" in item and "name" in item:
+                table.register_work_package(WorkPackageDef.model_validate(item), origin)
             elif "id" in item and "name" in item:
                 # Default to SoftwareSystem
                 table.register_system(SoftwareSystemDef.model_validate(item), origin)

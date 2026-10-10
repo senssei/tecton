@@ -6,6 +6,7 @@ from tecton.cli.apm_cli import app as apm_app
 from tecton.cli.bcm_cli import app as bcm_app
 from tecton.cli.data_cli import app as data_app
 from tecton.cli.diff_cli import diff_command
+from tecton.cli.roadmap_cli import app as roadmap_app
 from tecton.cli.serve_cli import serve_command
 from tecton.cli.trm_cli import app as trm_app
 from tecton.cli.validate_cli import validate_command
@@ -22,6 +23,7 @@ app.add_typer(apm_app, name="apm")
 app.add_typer(bcm_app, name="bcm")
 app.add_typer(trm_app, name="trm")
 app.add_typer(data_app, name="data")
+app.add_typer(roadmap_app, name="roadmap")
 app.command(name="validate", help="Validate architecture DSL manifests and enforce CI/CD quality gate.")(validate_command)
 app.command(name="lint", help="Alias for validate: Lint architecture DSL manifests.")(validate_command)
 app.command(name="diff", help="Semantic architectural diff between Git revisions or architecture directories.")(diff_command)

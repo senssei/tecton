@@ -151,6 +151,22 @@ tecton data lineage do-customer-profile --source examples/c4_eam_workspace
 tecton data export-lineage do-customer-profile --source examples/c4_eam_workspace
 ```
 
+### Architecture Transformation Roadmapping (`tecton roadmap`)
+Manage transformation plateaus (As-Is baseline vs transitional vs To-Be target), track work packages, audit transitional capability gaps, and export Mermaid Gantt diagrams:
+```bash
+# List plateaus and transformation work packages
+tecton roadmap list --source examples/c4_eam_workspace
+
+# Audit roadmap consistency, plateau states, and uncover transitional capability gaps
+tecton roadmap analyze --source examples/c4_eam_workspace
+
+# Compare As-Is vs To-Be architecture plateaus (delta on systems, capabilities, and tech debt)
+tecton roadmap compare plateau-2026-as-is plateau-2027-target --source examples/c4_eam_workspace
+
+# Export living Mermaid Gantt chart of transformation initiatives and milestones
+tecton roadmap export-gantt --source examples/c4_eam_workspace
+```
+
 ### Headless Architecture Intelligence Server (`tecton serve`)
 Serve real-time architecture intelligence, quality gates, and living diagram generation via high-performance REST API:
 ```bash

@@ -205,6 +205,80 @@ class SoftwareSystemDef(BaseModel):
         )
 
 
+class WorkPackageStatus(str, Enum):
+    """Execution status for architecture transformation work packages."""
+
+    PLANNED = "PLANNED"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+
+
+class PlateauDef(BaseModel):
+    """Architecture Plateau representing a stable baseline, transition, or target state."""
+
+    id: str
+    name: str
+    description: str | None = None
+    target_date: date | None = Field(default=None, description="Target milestone completion date")
+    previous_plateau_id: str | None = Field(default=None, description="Predecessor plateau ID")
+    active_system_ids: list[str] = Field(default_factory=list, description="Active software systems in this plateau")
+    decommissioned_system_ids: list[str] = Field(default_factory=list, description="Retired software systems in this plateau")
+    tags: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("id")
+    @classmethod
+    def id_must_be_non_empty(cls, v: str) -> str:
+        clean = v.strip()
+        if not clean:
+            raise ValueError("Plateau id must not be empty")
+        return clean
+
+    @field_validator("name")
+    @classmethod
+    def name_must_not_be_empty(cls, v: str) -> str:
+        clean = v.strip()
+        if not clean:
+            raise ValueError("Plateau name must not be empty")
+        return clean
+
+
+class WorkPackageDef(BaseModel):
+    """Transformation initiative, migration project, or work package."""
+
+    id: str
+    name: str
+    description: str | None = None
+    start_date: date | None = Field(default=None, description="Scheduled start date")
+    target_date: date | None = Field(default=None, description="Scheduled completion date")
+    status: WorkPackageStatus = WorkPackageStatus.PLANNED
+    from_plateau_id: str | None = Field(default=None, description="Starting transition plateau")
+    to_plateau_id: str | None = Field(default=None, description="Target transition plateau")
+    involved_system_ids: list[str] = Field(default_factory=list, description="Systems affected or delivered")
+    realized_capability_ids: list[str] = Field(default_factory=list, description="Capabilities delivered or impacted")
+    depends_on: list[str] = Field(default_factory=list, description="Prerequisite work package IDs")
+    owner: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("id")
+    @classmethod
+    def id_must_be_non_empty(cls, v: str) -> str:
+        clean = v.strip()
+        if not clean:
+            raise ValueError("WorkPackage id must not be empty")
+        return clean
+
+    @field_validator("name")
+    @classmethod
+    def name_must_not_be_empty(cls, v: str) -> str:
+        clean = v.strip()
+        if not clean:
+            raise ValueError("WorkPackage name must not be empty")
+        return clean
+
+
 class C4EAMManifest(BaseModel):
     """Root or grouped manifest document representing architecture entities."""
 
@@ -215,3 +289,6 @@ class C4EAMManifest(BaseModel):
     technologies: list[TechnologyDef] = Field(default_factory=list)
     data_objects: list[DataObjectDef] = Field(default_factory=list)
     interfaces: list[InterfaceDef] = Field(default_factory=list)
+    plateaus: list[PlateauDef] = Field(default_factory=list)
+    work_packages: list[WorkPackageDef] = Field(default_factory=list)
+

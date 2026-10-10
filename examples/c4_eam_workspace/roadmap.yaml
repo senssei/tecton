@@ -1,0 +1,50 @@
+# Architecture Transformation Roadmap (Plateaus & Work Packages)
+plateaus:
+  - id: plateau-2026-as-is
+    name: 2026 Current Architecture Baseline
+    description: Stable baseline with on-premise mainframe legacy billing and cloud CRM
+    target_date: 2026-06-30
+    active_system_ids:
+      - sys-crm-core
+      - sys-order-router
+      - sys-legacy-billing
+
+  - id: plateau-2027-target
+    name: 2027 Target Digital Architecture
+    description: Modernized cloud-native architecture with retired legacy Solaris billing
+    target_date: 2027-12-31
+    previous_plateau_id: plateau-2026-as-is
+    active_system_ids:
+      - sys-crm-core
+      - sys-order-router
+    decommissioned_system_ids:
+      - sys-legacy-billing
+
+work_packages:
+  - id: wp-billing-modernization
+    name: Billing Modernization & Cloud Migration
+    description: Migrate accounts receivable to modern cloud billing engine
+    status: IN_PROGRESS
+    start_date: 2026-07-01
+    target_date: 2027-06-30
+    from_plateau_id: plateau-2026-as-is
+    to_plateau_id: plateau-2027-target
+    involved_system_ids:
+      - sys-legacy-billing
+    realized_capability_ids:
+      - cap-invoicing
+
+  - id: wp-legacy-billing-decommission
+    name: Legacy Billing & Solaris Server Decommissioning
+    description: Fully shutdown and retire on-premise legacy billing mainframe
+    status: PLANNED
+    start_date: 2027-07-01
+    target_date: 2027-11-30
+    depends_on:
+      - wp-billing-modernization
+    from_plateau_id: plateau-2026-as-is
+    to_plateau_id: plateau-2027-target
+    involved_system_ids:
+      - sys-legacy-billing
+    realized_capability_ids:
+      - cap-invoicing

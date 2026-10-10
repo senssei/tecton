@@ -89,6 +89,7 @@ class GraphLinter:
         self._check_dependency_cycles(graph, report)
         self._check_lifecycles(graph, report)
         self._check_technology_governance(graph, report)
+        self._check_roadmap_governance(graph, report)
 
         return report
 
@@ -353,3 +354,168 @@ class GraphLinter:
                         entity_id=sys.id,
                         file_origin=origin,
                     )
+
+    def _check_roadmap_governance(self, graph: CompiledGraph, report: LintReport) -> None:
+        """Validate transformation roadmap plateaus and work packages."""
+        # 1. Plateaus validation
+        for plateau in graph.plateaus.values():
+            origin = graph.symbol_origins.get(plateau.id)
+
+            if plateau.previous_plateau_id:
+                if plateau.previous_plateau_id not in graph.plateaus:
+                    report.add_issue(
+                        severity=LintSeverity.ERROR,
+                        rule="REF_INTEGRITY_DANGLING_PLATEAU_PREDECESSOR",
+                        message=f"Plateau '{plateau.id}' references non-existent previous plateau '{plateau.previous_plateau_id}'",
+                        entity_id=plateau.id,
+                        file_origin=origin,
+                    )
+                else:
+                    pred = graph.plateaus[plateau.previous_plateau_id]
+                    if plateau.target_date and pred.target_date and plateau.target_date < pred.target_date:
+                        report.add_issue(
+                            severity=LintSeverity.ERROR,
+                            rule="LIFECYCLE_CHRONOLOGICAL_INVERSION",
+                            message=f"Plateau '{plateau.id}' target date ({plateau.target_date}) is earlier than its predecessor '{pred.id}' ({pred.target_date})",
+                            entity_id=plateau.id,
+                            file_origin=origin,
+                        )
+
+            # Cycle detection in plateau predecessor chain
+            visited = set()
+            curr = plateau.id
+            while curr:
+                if curr in visited:
+                    report.add_issue(
+                        severity=LintSeverity.ERROR,
+                        rule="ROADMAP_PLATEAU_CYCLE",
+                        message=f"Circular predecessor dependency detected in plateau chain involving '{curr}'",
+                        entity_id=plateau.id,
+                        file_origin=origin,
+                    )
+                    break
+                visited.add(curr)
+                parent = graph.plateaus.get(curr)
+                curr = parent.previous_plateau_id if parent else None
+
+            # Verify system references
+            for s_id in plateau.active_system_ids:
+                if s_id not in graph.systems:
+                    report.add_issue(
+                        severity=LintSeverity.ERROR,
+                        rule="REF_INTEGRITY_DANGLING_PLATEAU_SYSTEM",
+                        message=f"Plateau '{plateau.id}' references non-existent active system '{s_id}'",
+                        entity_id=plateau.id,
+                        file_origin=origin,
+                    )
+
+            for s_id in plateau.decommissioned_system_ids:
+                if s_id not in graph.systems:
+                    report.add_issue(
+                        severity=LintSeverity.ERROR,
+                        rule="REF_INTEGRITY_DANGLING_PLATEAU_SYSTEM",
+                        message=f"Plateau '{plateau.id}' references non-existent decommissioned system '{s_id}'",
+                        entity_id=plateau.id,
+                        file_origin=origin,
+                    )
+
+            overlap = set(plateau.active_system_ids) & set(plateau.decommissioned_system_ids)
+            for s_id in overlap:
+                report.add_issue(
+                    severity=LintSeverity.ERROR,
+                    rule="ROADMAP_CONTRADICTORY_SYSTEM_STATE",
+                    message=f"System '{s_id}' cannot be simultaneously active and decommissioned in plateau '{plateau.id}'",
+                    entity_id=plateau.id,
+                    file_origin=origin,
+                )
+
+        # 2. WorkPackages validation
+        for wp in graph.work_packages.values():
+            origin = graph.symbol_origins.get(wp.id)
+
+            if wp.from_plateau_id and wp.from_plateau_id not in graph.plateaus:
+                report.add_issue(
+                    severity=LintSeverity.ERROR,
+                    rule="REF_INTEGRITY_DANGLING_WORK_PACKAGE_PLATEAU",
+                    message=f"Work package '{wp.id}' references non-existent from_plateau '{wp.from_plateau_id}'",
+                    entity_id=wp.id,
+                    file_origin=origin,
+                )
+
+            if wp.to_plateau_id and wp.to_plateau_id not in graph.plateaus:
+                report.add_issue(
+                    severity=LintSeverity.ERROR,
+                    rule="REF_INTEGRITY_DANGLING_WORK_PACKAGE_PLATEAU",
+                    message=f"Work package '{wp.id}' references non-existent to_plateau '{wp.to_plateau_id}'",
+                    entity_id=wp.id,
+                    file_origin=origin,
+                )
+
+            if wp.start_date and wp.target_date and wp.start_date > wp.target_date:
+                report.add_issue(
+                    severity=LintSeverity.ERROR,
+                    rule="LIFECYCLE_CHRONOLOGICAL_INVERSION",
+                    message=f"Work package '{wp.id}' start_date ({wp.start_date}) cannot be later than target_date ({wp.target_date})",
+                    entity_id=wp.id,
+                    file_origin=origin,
+                )
+
+            for s_id in wp.involved_system_ids:
+                if s_id not in graph.systems:
+                    report.add_issue(
+                        severity=LintSeverity.ERROR,
+                        rule="REF_INTEGRITY_DANGLING_WORK_PACKAGE_SYSTEM",
+                        message=f"Work package '{wp.id}' references non-existent system '{s_id}'",
+                        entity_id=wp.id,
+                        file_origin=origin,
+                    )
+
+            for c_id in wp.realized_capability_ids:
+                if c_id not in graph.capabilities:
+                    report.add_issue(
+                        severity=LintSeverity.ERROR,
+                        rule="REF_INTEGRITY_DANGLING_WORK_PACKAGE_CAPABILITY",
+                        message=f"Work package '{wp.id}' references non-existent capability '{c_id}'",
+                        entity_id=wp.id,
+                        file_origin=origin,
+                    )
+
+            for dep_id in wp.depends_on:
+                if dep_id not in graph.work_packages:
+                    report.add_issue(
+                        severity=LintSeverity.ERROR,
+                        rule="REF_INTEGRITY_DANGLING_WORK_PACKAGE_DEPENDENCY",
+                        message=f"Work package '{wp.id}' references non-existent dependency '{dep_id}'",
+                        entity_id=wp.id,
+                        file_origin=origin,
+                    )
+
+        # 3. Work package dependency cycle detection (DFS)
+        wp_cycle_visited: set[str] = set()
+        wp_cycle_stack: set[str] = set()
+
+        def dfs_wp(node_id: str) -> bool:
+            wp_cycle_visited.add(node_id)
+            wp_cycle_stack.add(node_id)
+            node = graph.work_packages.get(node_id)
+            if node:
+                for dep in node.depends_on:
+                    if dep not in wp_cycle_visited:
+                        if dfs_wp(dep):
+                            return True
+                    elif dep in wp_cycle_stack:
+                        return True
+            wp_cycle_stack.remove(node_id)
+            return False
+
+        for wp_id in graph.work_packages:
+            if wp_id not in wp_cycle_visited:
+                if dfs_wp(wp_id):
+                    report.add_issue(
+                        severity=LintSeverity.ERROR,
+                        rule="ROADMAP_WORK_PACKAGE_CYCLE",
+                        message=f"Circular dependency detected in work package graph involving '{wp_id}'",
+                        entity_id=wp_id,
+                        file_origin=graph.symbol_origins.get(wp_id),
+                    )
+

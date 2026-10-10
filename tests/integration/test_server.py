@@ -25,6 +25,8 @@ def test_server_health(client: TestClient):
     assert data["technologies"] == 4
     assert data["data_objects"] == 3
     assert data["interfaces"] == 2
+    assert data["plateaus"] == 2
+    assert data["work_packages"] == 2
 
 
 def test_server_overview(client: TestClient):
@@ -36,6 +38,8 @@ def test_server_overview(client: TestClient):
     assert data["total_capabilities"] == 6
     assert data["total_technologies"] == 4
     assert data["technologies_past_eol"] == 1
+    assert data["total_plateaus"] == 2
+    assert data["total_work_packages"] == 2
     assert data["quality_gate_valid"] is True
 
 
@@ -138,6 +142,38 @@ def test_server_data_lineage_endpoints(client: TestClient):
     assert res_lin_404.status_code == 404
 
 
+def test_server_roadmap_endpoints(client: TestClient):
+    # 1. Plateaus
+    res_plat = client.get("/api/v1/roadmap/plateaus")
+    assert res_plat.status_code == 200
+    plateaus = res_plat.json()
+    assert len(plateaus) == 2
+    assert plateaus[0]["id"] == "plateau-2026-as-is"
+
+    # 2. Work packages
+    res_wp = client.get("/api/v1/roadmap/work-packages")
+    assert res_wp.status_code == 200
+    wps = res_wp.json()
+    assert len(wps) == 2
+
+    # 3. Analyze
+    res_an = client.get("/api/v1/roadmap/analyze")
+    assert res_an.status_code == 200
+    report = res_an.json()
+    assert report["total_plateaus"] == 2
+    assert report["total_work_packages"] == 2
+    assert len(report["transitional_gaps"]) == 1
+
+    # 4. Compare
+    res_comp = client.get("/api/v1/roadmap/compare?from_plateau=plateau-2026-as-is&to_plateau=plateau-2027-target")
+    assert res_comp.status_code == 200
+    comp = res_comp.json()
+    assert comp["from_plateau_id"] == "plateau-2026-as-is"
+    assert comp["to_plateau_id"] == "plateau-2027-target"
+    assert comp["decommissioned_system_ids"] == ["sys-legacy-billing"]
+    assert comp["tech_debt_reduction_count"] == 1
+
+
 def test_server_diagram_endpoints(client: TestClient):
     # 1. TIME matrix
     res_time = client.get("/api/v1/diagrams/time-matrix")
@@ -159,10 +195,16 @@ def test_server_diagram_endpoints(client: TestClient):
     assert res_lin.status_code == 200
     assert "flowchart LR" in res_lin.json()["content"]
 
-    # 5. Data lineage missing data_id -> 400
+    # 5. Roadmap Gantt
+    res_gantt = client.get("/api/v1/diagrams/roadmap-gantt")
+    assert res_gantt.status_code == 200
+    assert "gantt" in res_gantt.json()["content"]
+
+    # 6. Data lineage missing data_id -> 400
     res_bad = client.get("/api/v1/diagrams/data-lineage")
     assert res_bad.status_code == 400
 
-    # 6. Unknown chart type -> 400
+    # 7. Unknown chart type -> 400
     res_unknown = client.get("/api/v1/diagrams/non-existent-chart")
     assert res_unknown.status_code == 400
+

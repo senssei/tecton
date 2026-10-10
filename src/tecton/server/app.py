@@ -16,6 +16,7 @@ from tecton.exporters.mermaid import MermaidExporter
 from tecton.services.apm_service import APMService
 from tecton.services.bcm_service import BCMService
 from tecton.services.lineage_service import LineageService
+from tecton.services.roadmap_service import RoadmapService
 from tecton.services.trm_service import TRMService
 
 
@@ -30,6 +31,8 @@ class HealthResponse(BaseModel):
     interfaces: int
     data_objects: int
     relationships: int
+    plateaus: int = 0
+    work_packages: int = 0
 
 
 class OverviewResponse(BaseModel):
@@ -46,6 +49,8 @@ class OverviewResponse(BaseModel):
     technologies_past_eol: int
     total_interfaces: int
     total_data_objects: int
+    total_plateaus: int = 0
+    total_work_packages: int = 0
 
 
 def create_app(workspace_path: Path | str = ".") -> FastAPI:
@@ -87,6 +92,8 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
             interfaces=len(graph.interfaces),
             data_objects=len(graph.data_objects),
             relationships=len(graph.relationships),
+            plateaus=len(graph.plateaus),
+            work_packages=len(graph.work_packages),
         )
 
     @app.get("/api/v1/overview", response_model=OverviewResponse, tags=["System"])
@@ -111,6 +118,8 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
             technologies_past_eol=trm_report.eol_count,
             total_interfaces=len(graph.interfaces),
             total_data_objects=len(graph.data_objects),
+            total_plateaus=len(graph.plateaus),
+            total_work_packages=len(graph.work_packages),
         )
 
     @app.post("/api/v1/reload", tags=["System"])
@@ -363,6 +372,66 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
             "risk_count": report.risk_count,
         }
 
+    # --- Architecture Transformation Roadmap Endpoints ---
+    @app.get("/api/v1/roadmap/plateaus", tags=["Roadmap"])
+    def list_plateaus() -> list[dict[str, Any]]:
+        """List transformation plateaus ordered chronologically and by predecessor."""
+        service = RoadmapService(adapter.graph)
+        return [
+            {
+                "id": p.id,
+                "name": p.name,
+                "description": p.description,
+                "target_date": p.target_date,
+                "previous_plateau_id": p.previous_plateau_id,
+                "active_system_ids": p.active_system_ids,
+                "decommissioned_system_ids": p.decommissioned_system_ids,
+            }
+            for p in service.list_plateaus()
+        ]
+
+    @app.get("/api/v1/roadmap/work-packages", tags=["Roadmap"])
+    def list_work_packages() -> list[dict[str, Any]]:
+        """List transformation work packages and migration initiatives."""
+        service = RoadmapService(adapter.graph)
+        return [
+            {
+                "id": w.id,
+                "name": w.name,
+                "description": w.description,
+                "status": w.status.value,
+                "start_date": w.start_date,
+                "target_date": w.target_date,
+                "from_plateau_id": w.from_plateau_id,
+                "to_plateau_id": w.to_plateau_id,
+                "involved_system_ids": w.involved_system_ids,
+                "realized_capability_ids": w.realized_capability_ids,
+                "depends_on": w.depends_on,
+                "owner": w.owner,
+            }
+            for w in service.list_work_packages()
+        ]
+
+    @app.get("/api/v1/roadmap/analyze", tags=["Roadmap"])
+    def analyze_roadmap() -> dict[str, Any]:
+        """Audit roadmap consistency, plateau states, and transitional capability gaps."""
+        service = RoadmapService(adapter.graph)
+        report = service.analyze()
+        return report.model_dump()
+
+    @app.get("/api/v1/roadmap/compare", tags=["Roadmap"])
+    def compare_plateaus(
+        from_plateau: str = Query(..., description="Baseline or predecessor plateau ID"),
+        to_plateau: str = Query(..., description="Target plateau ID"),
+    ) -> dict[str, Any]:
+        """Compare two architecture plateaus and compute scenario delta (As-Is vs To-Be)."""
+        service = RoadmapService(adapter.graph)
+        try:
+            comparison = service.compare_plateaus(from_plateau, to_plateau)
+        except KeyError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        return comparison.model_dump()
+
     # --- Living Visualizations Endpoints ---
     @app.get("/api/v1/diagrams/{chart_type}", tags=["Visualizations"])
     def get_diagram(
@@ -388,10 +457,13 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
                 chart = service_lineage.export_lineage_flowchart(data_id)
             except KeyError as e:
                 raise HTTPException(status_code=404, detail=str(e))
+        elif chart_type == "roadmap-gantt":
+            service_roadmap = RoadmapService(graph)
+            chart = service_roadmap.export_gantt()
         else:
             raise HTTPException(
                 status_code=400,
-                detail=f"Unknown chart_type '{chart_type}'. Supported types: time-matrix, capability-heatmap, tech-radar, data-lineage",
+                detail=f"Unknown chart_type '{chart_type}'. Supported types: time-matrix, capability-heatmap, tech-radar, data-lineage, roadmap-gantt",
             )
 
         return {
