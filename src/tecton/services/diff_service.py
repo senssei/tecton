@@ -100,42 +100,42 @@ class DiffService:
             "",
             f"> Comparing `{report.base_ref}` ➔ `{report.head_ref}`",
             "",
-            "### 📊 Podsumowanie Zmian Architektonicznych",
+            "### 📊 Architectural Change Summary",
             "",
-            "| Metryka | Wartość |",
+            "| Metric | Value |",
             "| :--- | :--- |",
-            f"| **Dodane Elementy** | `{report.added_count}` |",
-            f"| **Usunięte Elementy** | `{report.removed_count}` |",
-            f"| **Zmodyfikowane Elementy** | `{report.modified_count}` |",
-            f"| **Nowe Ryzyka / Błędy Lintera** | `{len(report.new_risk_issues)}` |",
-            f"| **Nowe Luki w Zdolnościach (Gaps)** | `{len(report.new_capability_gaps)}` |",
+            f"| **Added Entities** | `{report.added_count}` |",
+            f"| **Removed Entities** | `{report.removed_count}` |",
+            f"| **Modified Entities** | `{report.modified_count}` |",
+            f"| **New Risks / Linter Issues** | `{len(report.new_risk_issues)}` |",
+            f"| **New Capability Gaps** | `{len(report.new_capability_gaps)}` |",
             "",
         ]
 
         if report.new_risk_issues:
-            lines.append("### 🚨 Nowo Wykryte Zagrożenia & Regresje Jakości")
+            lines.append("### 🚨 New Risks & Quality Regressions Detected")
             lines.append("")
-            lines.append("| Poziom | Reguła | Dotknięty Element | Komunikat |")
+            lines.append("| Severity | Rule | Impacted Entity | Message |")
             lines.append("| :--- | :--- | :--- | :--- |")
             for risk in report.new_risk_issues:
-                icon = "🚨 BŁĄD" if risk.get("severity") == "ERROR" else "⚠️ OSTRZEŻENIE"
+                icon = "🚨 ERROR" if risk.get("severity") == "ERROR" else "⚠️ WARN"
                 lines.append(
                     f"| {icon} | `{risk.get('rule')}` | `{risk.get('entity_id')}` | {risk.get('message')} |"
                 )
             lines.append("")
 
         if report.new_capability_gaps:
-            lines.append("### ⚠️ Powstałe Luki w Zdolnościach Biznesowych (Blind Spots)")
+            lines.append("### ⚠️ New Business Capability Blind Spots (Gaps)")
             lines.append("")
-            lines.append("Poniższe zdolności biznesowe utraciły wszystkie realizujące je systemy informatyczne:")
+            lines.append("The following business capabilities lost all supporting IT systems:")
             for gap in report.new_capability_gaps:
                 lines.append(f"- 🛑 `{gap}`")
             lines.append("")
 
         if report.deltas:
-            lines.append("<details><summary><b>🔍 Szczegółowa Lista Zmian Elementów (Kliknij, aby rozwinąć)</b></summary>")
+            lines.append("<details><summary><b>🔍 Detailed Entity Change Log (Click to expand)</b></summary>")
             lines.append("")
-            lines.append("| Typ Encji | ID Elementu | Typ Zmiany | Nazwa / Modyfikowane Pola |")
+            lines.append("| Entity Type | Entity ID | Change Type | Name / Field Changes |")
             lines.append("| :--- | :--- | :--- | :--- |")
             for d in report.deltas:
                 change_badge = (

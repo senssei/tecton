@@ -22,9 +22,9 @@ def test_cli_bcm_analyze():
     result = runner.invoke(app, ["bcm", "analyze", "--source", str(workspace)])
 
     assert result.exit_code == 0
-    assert "Podsumowanie Pokrycia Zdolności Biznesowych" in result.output
-    assert "Wszystkie Zdolności Biznesowe" in result.output
-    assert "Tabela Stanu Zdrowia Zdolności Biznesowych" in result.output
+    assert "Business Capability Coverage Summary" in result.output
+    assert "Total Business Capabilities" in result.output
+    assert "Business Capability Health Matrix" in result.output
 
 
 def test_cli_bcm_heatmap():

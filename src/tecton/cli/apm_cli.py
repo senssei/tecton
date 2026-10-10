@@ -115,30 +115,30 @@ def analyze_portfolio(
     with console.status("[bold green]Executing Tecton Portfolio Analytics..."):
         result = service.analyze()
 
-    console.print("\n[bold]1. Wyniki Klasyfikacji Gartner TIME[/bold]")
+    console.print("\n[bold]1. Gartner TIME Classification Results[/bold]")
     summary_table = Table()
-    summary_table.add_column("Kwadrant", style="bold")
-    summary_table.add_column("Liczba Aplikacji", justify="right")
-    summary_table.add_column("Strategia Architektoniczna")
+    summary_table.add_column("Quadrant", style="bold")
+    summary_table.add_column("Application Count", justify="right")
+    summary_table.add_column("Architectural Strategy")
 
     from collections import Counter
     counts = Counter(result.time_classifications.values())
     total = len(result.applications)
 
-    summary_table.add_row("[green]INVEST[/green]", str(counts.get(TimeQuadrant.INVEST, 0)), "Skaluj i inwestuj w rozwój")
-    summary_table.add_row("[yellow]TOLERATE[/yellow]", str(counts.get(TimeQuadrant.TOLERATE, 0)), "Utrzymuj, modernizuj architekturę")
-    summary_table.add_row("[blue]MIGRATE[/blue]", str(counts.get(TimeQuadrant.MIGRATE, 0)), "Konsoliduj, zmień przeznaczenie")
-    summary_table.add_row("[red]ELIMINATE[/red]", str(counts.get(TimeQuadrant.ELIMINATE, 0)), "Planuj wycofanie i wygaszenie")
-    summary_table.add_row("[dim]UNKNOWN[/dim]", str(counts.get(TimeQuadrant.UNKNOWN, 0)), "Brak pełnych ocen dopasowania")
+    summary_table.add_row("[green]INVEST[/green]", str(counts.get(TimeQuadrant.INVEST, 0)), "Scale and invest in growth")
+    summary_table.add_row("[yellow]TOLERATE[/yellow]", str(counts.get(TimeQuadrant.TOLERATE, 0)), "Tolerate, modernize architecture")
+    summary_table.add_row("[blue]MIGRATE[/blue]", str(counts.get(TimeQuadrant.MIGRATE, 0)), "Consolidate, re-platform/migrate")
+    summary_table.add_row("[red]ELIMINATE[/red]", str(counts.get(TimeQuadrant.ELIMINATE, 0)), "Plan decommissioning and elimination")
+    summary_table.add_row("[dim]UNKNOWN[/dim]", str(counts.get(TimeQuadrant.UNKNOWN, 0)), "Missing complete fit scores")
     console.print(summary_table)
 
     if result.redundancy_clusters:
-        console.print("\n[bold]2. Wykryte Klastry Redundancji Funkcjonalnej[/bold]")
+        console.print("\n[bold]2. Functional Redundancy Clusters Detected[/bold]")
         red_table = Table()
-        red_table.add_column("Klaster ID", style="dim")
-        red_table.add_column("Aplikacje", style="cyan")
-        red_table.add_column("Podobieństwo", justify="right", style="bold")
-        red_table.add_column("Rekomendacja")
+        red_table.add_column("Cluster ID", style="dim")
+        red_table.add_column("Applications", style="cyan")
+        red_table.add_column("Similarity", justify="right", style="bold")
+        red_table.add_column("Recommendation")
 
         for c in result.redundancy_clusters:
             red_table.add_row(
@@ -149,18 +149,18 @@ def analyze_portfolio(
             )
         console.print(red_table)
     else:
-        console.print("\n[green]2. Brak wykrytych redundancji powyżej zadanego progu.[/green]")
+        console.print("\n[green]2. No functional redundancies detected above threshold.[/green]")
 
     if result.lifecycle_report.issues:
-        console.print("\n[bold red]3. Niezgodności Chronologiczne Cyklu Życia[/bold red]")
+        console.print("\n[bold red]3. Chronological Lifecycle Inconsistencies[/bold red]")
         for issue in result.lifecycle_report.issues:
-            icon = "[red]🚨 BŁĄD[/red]" if issue.severity == "ERROR" else "[yellow]⚠️ OSTRZEŻENIE[/yellow]"
+            icon = "[red]🚨 ERROR[/red]" if issue.severity == "ERROR" else "[yellow]⚠️ WARNING[/yellow]"
             console.print(f"  {icon} [bold]{issue.application_name}[/bold]: {issue.message}")
     else:
-        console.print("\n[green]3. Cykl życia: Wszystkie fazy wykazują poprawną chronologię.[/green]")
+        console.print("\n[green]3. Lifecycle: All phases maintain valid chronological sequence.[/green]")
 
     if result.patches_needed > 0:
-        console.print(f"\n[cyan]💡 Dostępne modyfikacje:[/cyan] {result.patches_needed} aplikacji wymaga aktualizacji kwadrantu TIME. Uruchom [bold]`tecton apm patch-time`[/bold].")
+        console.print(f"\n[cyan]💡 Pending Updates:[/cyan] {result.patches_needed} applications require TIME quadrant updates. Run [bold]`tecton apm patch-time`[/bold].")
 
 
 @app.command("export-matrix")
@@ -177,7 +177,7 @@ def export_matrix(
 
     apps = service.get_applications()
     if not apps:
-        console.print("[red]Brak aplikacji do wygenerowania raportu.[/red]")
+        console.print("[red]No applications found to generate report.[/red]")
         return
 
     if fmt.lower() == "mermaid":
@@ -194,7 +194,7 @@ def export_matrix(
     if output:
         out_path = Path(output)
         out_path.write_text(content, encoding="utf-8")
-        console.print(f"[green]Raport zapisany pomyślnie w pliku:[/green] {out_path.resolve()}")
+        console.print(f"[green]Report successfully exported to file:[/green] {out_path.resolve()}")
     else:
         console.print(content)
 
@@ -203,7 +203,7 @@ def export_matrix(
 def patch_time_classifications(
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to input JSON/YAML file")] = None,
     config_path: Annotated[Optional[str], typer.Option("--config", "-c", help="Path to tecton.yaml")] = None,
-    apply: Annotated[bool, typer.Option("--apply", help="Fizycznie zaaplikuj zmiany (domyślnie dry-run)")] = False,
+    apply: Annotated[bool, typer.Option("--apply", help="Persist changes to repository (default dry-run)")] = False,
 ) -> None:
     """Apply evaluated TIME classification quadrants to repository entities."""
     config = TectonConfig.load(config_path)
@@ -213,12 +213,12 @@ def patch_time_classifications(
     is_dry_run = not apply
     results = service.apply_time_patches(dry_run=is_dry_run)
 
-    mode_label = "[yellow][DRY-RUN - SYMULACJA][/yellow]" if is_dry_run else "[green][APPLIED - ZAPISANO][/green]"
-    console.print(f"{mode_label} Przetworzono {len(results)} łatek aktualizacji TIME.")
+    mode_label = "[yellow][DRY-RUN - SIMULATION][/yellow]" if is_dry_run else "[green][APPLIED - PERSISTED][/green]"
+    console.print(f"{mode_label} Processed {len(results)} TIME quadrant update patches.")
 
     for res in results:
         status_color = "yellow" if is_dry_run else "green"
-        console.print(f"  • Entity ID: {res['entity_id'][:8]} -> [{status_color}]{res.get('status', 'ok')}[/{status_color}] ({res.get('applied_count', 0)} zmian)")
+        console.print(f"  • Entity ID: {res['entity_id'][:8]} -> [{status_color}]{res.get('status', 'ok')}[/{status_color}] ({res.get('applied_count', 0)} changes)")
 
     if is_dry_run and results:
-        console.print("\n[dim]Aby zapisać zmiany w repozytorium, dodaj flagę `--apply`.[/dim]")
+        console.print("\n[dim]To persist changes to the repository, provide the `--apply` flag.[/dim]")

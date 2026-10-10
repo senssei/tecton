@@ -13,7 +13,7 @@ def test_cli_validate_success_on_example_workspace():
     result = runner.invoke(app, ["validate", str(workspace)])
 
     assert result.exit_code == 0
-    assert "Architektura poprawna" in result.output or "BRAMKA CI/CD ZATWIERDZONA" in result.output
+    assert "Architecture valid" in result.output or "CI/CD QUALITY GATE PASSED" in result.output
 
 
 def test_cli_lint_alias_works():
@@ -28,7 +28,7 @@ def test_cli_validate_strict_mode_fails_on_warnings():
     result = runner.invoke(app, ["validate", "--strict", str(workspace)])
 
     assert result.exit_code == 1
-    assert "BRAMKA CI/CD ZABLOKOWANA" in result.output
+    assert "CI/CD QUALITY GATE BLOCKED" in result.output
 
 
 def test_cli_validate_json_format():
@@ -58,4 +58,4 @@ def test_cli_validate_fails_on_dangling_references(tmp_path: Path):
     result = runner.invoke(app, ["validate", str(tmp_path)])
     assert result.exit_code == 1
     assert "REF_INTEGRITY_DANGLING_SYSTEM_CAPABILITY" in result.output
-    assert "BRAMKA CI/CD ZABLOKOWANA" in result.output
+    assert "CI/CD QUALITY GATE BLOCKED" in result.output

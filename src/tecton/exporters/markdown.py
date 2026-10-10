@@ -34,19 +34,19 @@ class MarkdownExporter:
             f"- **Redundancy Clusters Detected:** {len(redundancy_clusters)}",
             f"- **Lifecycle Chronological Errors:** {lifecycle_report.error_count}",
             "",
-            "### Rozkład Kwadrantów TIME",
+            "### TIME Quadrant Distribution",
             "",
-            "| Kwadrant | Liczba Aplikacji | Udział % | Rekomendacja Strategiczna |",
+            "| Quadrant | Application Count | Share % | Strategic Recommendation |",
             "| :--- | :--- | :--- | :--- |",
-            f"| **INVEST** | {counter.get(TimeQuadrant.INVEST, 0)} | {counter.get(TimeQuadrant.INVEST, 0)/total*100:.1f}% | Rozwijaj i skaluj |",
-            f"| **TOLERATE** | {counter.get(TimeQuadrant.TOLERATE, 0)} | {counter.get(TimeQuadrant.TOLERATE, 0)/total*100:.1f}% | Utrzymuj, planuj refaktoring techniczny |",
-            f"| **MIGRATE** | {counter.get(TimeQuadrant.MIGRATE, 0)} | {counter.get(TimeQuadrant.MIGRATE, 0)/total*100:.1f}% | Konsoliduj lub zmień przeznaczenie |",
-            f"| **ELIMINATE** | {counter.get(TimeQuadrant.ELIMINATE, 0)} | {counter.get(TimeQuadrant.ELIMINATE, 0)/total*100:.1f}% | Wycofaj i wygaś wsparcie |",
-            f"| **UNKNOWN** | {counter.get(TimeQuadrant.UNKNOWN, 0)} | {counter.get(TimeQuadrant.UNKNOWN, 0)/total*100:.1f}% | Uzupełnij oceny przydatności |",
+            f"| **INVEST** | {counter.get(TimeQuadrant.INVEST, 0)} | {counter.get(TimeQuadrant.INVEST, 0)/total*100:.1f}% | Invest and scale development |",
+            f"| **TOLERATE** | {counter.get(TimeQuadrant.TOLERATE, 0)} | {counter.get(TimeQuadrant.TOLERATE, 0)/total*100:.1f}% | Tolerate, plan technical refactoring |",
+            f"| **MIGRATE** | {counter.get(TimeQuadrant.MIGRATE, 0)} | {counter.get(TimeQuadrant.MIGRATE, 0)/total*100:.1f}% | Consolidate or re-platform |",
+            f"| **ELIMINATE** | {counter.get(TimeQuadrant.ELIMINATE, 0)} | {counter.get(TimeQuadrant.ELIMINATE, 0)/total*100:.1f}% | Decommission and eliminate |",
+            f"| **UNKNOWN** | {counter.get(TimeQuadrant.UNKNOWN, 0)} | {counter.get(TimeQuadrant.UNKNOWN, 0)/total*100:.1f}% | Complete missing suitability scores |",
             "",
             "---",
             "",
-            "## 2. Diagram Kwadrantowy TIME (Mermaid)",
+            "## 2. TIME Quadrant Matrix (Mermaid)",
             "",
             "```mermaid",
             MermaidExporter.to_time_quadrant_chart(applications),
@@ -54,13 +54,13 @@ class MarkdownExporter:
             "",
             "---",
             "",
-            "## 3. Zidentyfikowane Redundancje Funkcjonalne",
+            "## 3. Identified Functional Redundancies",
             "",
         ]
 
         if redundancy_clusters:
             sections.append(
-                "| ID Klastra | Aplikacje w Klastrze | Podobieństwo Jaccarda | Wspólne Zdolności Biznesowe | Rekomendacja |"
+                "| Cluster ID | Applications in Cluster | Jaccard Similarity | Shared Business Capabilities | Recommendation |"
             )
             sections.append("| :--- | :--- | :--- | :--- | :--- |")
             for c in redundancy_clusters:
@@ -70,22 +70,22 @@ class MarkdownExporter:
                     f"| `{c.cluster_id}` | **{apps_str}** | **{c.similarity_score*100:.1f}%** | {caps_str or '-'} | {c.recommendation} |"
                 )
         else:
-            sections.append("*Nie wykryto krytycznych nakładań funkcjonalnych powyżej zadanego progu.*")
+            sections.append("*No functional overlaps detected above the configured threshold.*")
 
         sections.append("")
         sections.append("---")
         sections.append("")
-        sections.append("## 4. Spójność Chronologiczna Cyklu Życia")
+        sections.append("## 4. Chronological Lifecycle Consistency",)
         sections.append("")
 
         if lifecycle_report.issues:
-            sections.append("| Poziom | Aplikacja | Opis Problemu |")
+            sections.append("| Severity | Application | Issue Description |")
             sections.append("| :--- | :--- | :--- |")
             for issue in lifecycle_report.issues:
-                icon = "🚨 BŁĄD" if issue.severity == "ERROR" else "⚠️ OSTRZEŻENIE"
+                icon = "🚨 ERROR" if issue.severity == "ERROR" else "⚠️ WARNING"
                 sections.append(f"| {icon} | **{issue.application_name}** | {issue.message} |")
         else:
-            sections.append("✅ *Wszystkie fazy cyklu życia systemów wykazują poprawną chronologię.*")
+            sections.append("✅ *All application lifecycle phases maintain valid chronological ordering.*")
 
         sections.append("")
         return "\n".join(sections)

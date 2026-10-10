@@ -17,7 +17,7 @@ console = Console()
 def _resolve_source(source: str | None) -> Path:
     target = Path(source) if source else Path(".")
     if not target.exists():
-        console.print(f"[bold red]Błąd: Ścieżka '{target}' nie istnieje.[/bold red]")
+        console.print(f"[bold red]Error: Path '{target}' does not exist.[/bold red]")
         raise typer.Exit(code=1)
     return target
 
@@ -76,38 +76,38 @@ def analyze_capabilities(
     service = BCMService(target_path)
     report = service.analyze()
 
-    console.print("\n[bold]1. Podsumowanie Pokrycia Zdolności Biznesowych[/bold]")
+    console.print("\n[bold]1. Business Capability Coverage Summary[/bold]")
     summary_table = Table()
-    summary_table.add_column("Metryka", style="bold")
-    summary_table.add_column("Wartość", justify="right")
+    summary_table.add_column("Metric", style="bold")
+    summary_table.add_column("Value", justify="right")
 
-    summary_table.add_row("Wszystkie Zdolności Biznesowe", str(report.total_capabilities))
-    summary_table.add_row("Zdolności Pokryte Systemami", f"[green]{report.mapped_capabilities}[/green]")
-    summary_table.add_row("Białe Plamy (Gaps / 0 systemów)", f"[red]{len(report.orphaned_capabilities)}[/red]")
-    summary_table.add_row("Klastry Nadmiarowości (Hotspots)", f"[yellow]{len(report.overprovisioned_capabilities)}[/yellow]")
-    summary_table.add_row("Procent Pokrycia Portfela", f"[bold cyan]{report.coverage_percentage:.1f}%[/bold cyan]")
+    summary_table.add_row("Total Business Capabilities", str(report.total_capabilities))
+    summary_table.add_row("Capabilities Mapped to Systems", f"[green]{report.mapped_capabilities}[/green]")
+    summary_table.add_row("Coverage Blind Spots (Gaps / 0 systems)", f"[red]{len(report.orphaned_capabilities)}[/red]")
+    summary_table.add_row("Redundancy Hotspots (Over-provisioned)", f"[yellow]{len(report.overprovisioned_capabilities)}[/yellow]")
+    summary_table.add_row("Portfolio Coverage Ratio", f"[bold cyan]{report.coverage_percentage:.1f}%[/bold cyan]")
     console.print(summary_table)
 
     if report.orphaned_capabilities:
-        console.print("\n[bold red]⚠️ Wykryte Luki w Pokryciu (Brak wsparcia systemowego / Blind Spots):[/bold red]")
+        console.print("\n[bold red]⚠️ Coverage Blind Spots Detected (No supporting systems):[/bold red]")
         for c_id in report.orphaned_capabilities:
             cov = report.coverages[c_id]
             console.print(f"  • [red]{cov.name}[/red] [dim]({c_id})[/dim]")
 
     if report.overprovisioned_capabilities:
-        console.print("\n[bold yellow]💡 Wykryte Hotspoty Nadmiarowości (Kandydaci do konsolidacji):[/bold yellow]")
+        console.print("\n[bold yellow]💡 Redundancy Hotspots Detected (Consolidation candidates):[/bold yellow]")
         for c_id in report.overprovisioned_capabilities:
             cov = report.coverages[c_id]
-            console.print(f"  • [yellow]{cov.name}[/yellow] ({len(cov.realizing_system_ids)} systemów): {', '.join(cov.realizing_system_names)}")
+            console.print(f"  • [yellow]{cov.name}[/yellow] ({len(cov.realizing_system_ids)} systems): {', '.join(cov.realizing_system_names)}")
 
-    console.print("\n[bold]2. Tabela Stanu Zdrowia Zdolności Biznesowych[/bold]")
+    console.print("\n[bold]2. Business Capability Health Matrix[/bold]")
     table = Table()
     table.add_column("ID", style="dim", no_wrap=True)
-    table.add_column("Nazwa Zdolności", style="bold")
-    table.add_column("Poziom", justify="center")
-    table.add_column("Stan Zdrowia", justify="center")
-    table.add_column("Liczba Aplikacji", justify="right")
-    table.add_column("Realizujące Systemy")
+    table.add_column("Capability Name", style="bold")
+    table.add_column("Level", justify="center")
+    table.add_column("Health Status", justify="center")
+    table.add_column("Application Count", justify="right")
+    table.add_column("Realizing Systems")
 
     for c_id, cov in sorted(report.coverages.items(), key=lambda x: x[1].name):
         color = "green" if cov.health == CapabilityHealth.HEALTHY else "yellow" if cov.health == CapabilityHealth.TOLERABLE else "red" if cov.health == CapabilityHealth.AT_RISK else "dim"
@@ -137,6 +137,6 @@ def export_heatmap(
     if output:
         out_path = Path(output)
         out_path.write_text(chart, encoding="utf-8")
-        console.print(f"[green]Mapa ciepła Mermaid zapisana w pliku:[/green] {out_path.resolve()}")
+        console.print(f"[green]Mermaid heatmap saved to file:[/green] {out_path.resolve()}")
     else:
         console.print(chart)

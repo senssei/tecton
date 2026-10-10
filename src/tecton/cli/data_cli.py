@@ -17,7 +17,7 @@ console = Console()
 def _resolve_source(source: str | None) -> Path:
     target = Path(source) if source else Path(".")
     if not target.exists():
-        console.print(f"[bold red]Błąd: Ścieżka '{target}' nie istnieje.[/bold red]")
+        console.print(f"[bold red]Error: Path '{target}' does not exist.[/bold red]")
         raise typer.Exit(code=1)
     return target
 
@@ -32,15 +32,15 @@ def list_data_objects(
     data_objects = service.list_data_objects()
 
     if not data_objects:
-        console.print("[yellow]Brak zarejestrowanych obiektów danych (Data Objects) w katalogu.[/yellow]")
+        console.print("[yellow]No business data objects registered in catalog.[/yellow]")
         return
 
-    table = Table(title=f"Katalog Obiektów Danych Biznesowych ({len(data_objects)} encji)")
+    table = Table(title=f"Business Data Objects Catalog ({len(data_objects)} entities)")
     table.add_column("ID", style="dim", no_wrap=True)
-    table.add_column("Nazwa Encji Danych", style="bold cyan")
-    table.add_column("Klasyfikacja Poufności", justify="center")
-    table.add_column("Właściciel Biznesowy (Owner)", style="magenta")
-    table.add_column("Opis", style="dim")
+    table.add_column("Data Entity Name", style="bold cyan")
+    table.add_column("Classification", justify="center")
+    table.add_column("Business Owner", style="magenta")
+    table.add_column("Description", style="dim")
 
     for obj in data_objects:
         color = "green"
@@ -74,16 +74,16 @@ def list_interfaces(
     interfaces = service.list_interfaces()
 
     if not interfaces:
-        console.print("[yellow]Brak zarejestrowanych interfejsów (Interfaces) w katalogu.[/yellow]")
+        console.print("[yellow]No interfaces registered in catalog.[/yellow]")
         return
 
-    table = Table(title=f"Katalog Interfejsów & Kontraktów API ({len(interfaces)} interfejsów)")
+    table = Table(title=f"Interfaces & API Contracts Catalog ({len(interfaces)} interfaces)")
     table.add_column("ID", style="dim", no_wrap=True)
-    table.add_column("Nazwa Interfejsu", style="bold cyan")
-    table.add_column("Protokół", justify="center", style="magenta")
-    table.add_column("System Dostawca (Provider)", style="bold green")
-    table.add_column("Systemy Konsumenci (Consumers)")
-    table.add_column("Przesyłane Obiekty Danych")
+    table.add_column("Interface Name", style="bold cyan")
+    table.add_column("Protocol", justify="center", style="magenta")
+    table.add_column("Provider System", style="bold green")
+    table.add_column("Consumer Systems")
+    table.add_column("Carried Data Objects")
 
     for iface in interfaces:
         consumers_str = ", ".join(iface.consumer_system_ids) or "[dim]-[/dim]"
@@ -104,7 +104,7 @@ def list_interfaces(
 
 @app.command("lineage")
 def trace_lineage(
-    data_object_id: Annotated[str, typer.Argument(help="ID obiektu danych do analizy ścieżki przepływu")],
+    data_object_id: Annotated[str, typer.Argument(help="ID of data object to trace flow trajectory")],
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
 ) -> None:
     """Trace end-to-end data lineage trajectory and compliance risks across systems."""
@@ -114,29 +114,29 @@ def trace_lineage(
     try:
         report = service.trace_lineage(data_object_id)
     except KeyError as e:
-        console.print(f"[bold red]Błąd: {e}[/bold red]")
+        console.print(f"[bold red]Error: {e}[/bold red]")
         raise typer.Exit(code=1)
 
     status_color = "bold green" if report.is_compliant else "bold red"
-    status_label = "✅ ZGODNY (Brak Ryzyk Zgodności)" if report.is_compliant else f"🚨 WYKRYTO {report.risk_count} ZAGROŻEŃ ZGODNOŚCI"
+    status_label = "✅ COMPLIANT (No Compliance Risks Detected)" if report.is_compliant else f"🚨 DETECTED {report.risk_count} COMPLIANCE RISKS"
 
-    console.print(f"\n[bold]Ścieżka Pochodzenia Danych (Data Lineage):[/bold] [cyan]{report.data_object_name}[/cyan] ({report.data_object_id})")
+    console.print(f"\n[bold]Data Lineage Trajectory:[/bold] [cyan]{report.data_object_name}[/cyan] ({report.data_object_id})")
     console.print(Panel(
-        f"• Klasyfikacja: [bold]{report.classification.value}[/bold]\n"
-        f"• Właściciel: {report.owner or '[dim]Brak[/dim]'}\n"
-        f"• Systemy Źródłowe (Producers): [bold green]{', '.join(report.producers) or '-'}[/bold green]\n"
-        f"• Systemy Odbiorcze (Consumers): [bold cyan]{', '.join(report.consumers) or '-'}[/bold cyan]\n"
-        f"• Status Zgodności / Audytu: [{status_color}]{status_label}[/{status_color}]",
-        title="Podsumowanie Encji Danych",
+        f"• Classification: [bold]{report.classification.value}[/bold]\n"
+        f"• Owner: {report.owner or '[dim]None[/dim]'}\n"
+        f"• Source Systems (Producers): [bold green]{', '.join(report.producers) or '-'}[/bold green]\n"
+        f"• Receiving Systems (Consumers): [bold cyan]{', '.join(report.consumers) or '-'}[/bold cyan]\n"
+        f"• Compliance Audit Status: [{status_color}]{status_label}[/{status_color}]",
+        title="Data Entity Summary",
     ))
 
     if report.compliance_risks:
-        console.print("\n[bold red]🚨 Wykryte Zagrożenia Zgodności & Prywatności Danych:[/bold red]")
+        console.print("\n[bold red]🚨 Detected Compliance & Privacy Risks:[/bold red]")
         risk_table = Table()
-        risk_table.add_column("Poziom", justify="center")
-        risk_table.add_column("Reguła", style="dim")
+        risk_table.add_column("Severity", justify="center")
+        risk_table.add_column("Rule", style="dim")
         risk_table.add_column("System", style="bold")
-        risk_table.add_column("Opis Naruszenia")
+        risk_table.add_column("Message")
 
         for r in report.compliance_risks:
             sev_color = "[bold red]CRITICAL[/bold red]" if r["severity"] == "CRITICAL" else "[bold yellow]HIGH[/bold yellow]" if r["severity"] == "HIGH" else "[yellow]MED[/yellow]"
@@ -144,11 +144,11 @@ def trace_lineage(
         console.print(risk_table)
 
     if report.flow_edges:
-        console.print("\n[bold]Kaskadowe Krawędzie Przepływu Danych w Architekturze:[/bold]")
+        console.print("\n[bold]Cascading Data Flow Edges in Architecture:[/bold]")
         flow_table = Table()
-        flow_table.add_column("Nadawca (Source)", style="green")
-        flow_table.add_column("Kanał / Interfejs", style="bold magenta", justify="center")
-        flow_table.add_column("Odbiorca (Target)", style="cyan")
+        flow_table.add_column("Source", style="green")
+        flow_table.add_column("Channel / Interface", style="bold magenta", justify="center")
+        flow_table.add_column("Target", style="cyan")
 
         for edge in report.flow_edges:
             flow_table.add_row(
@@ -158,16 +158,16 @@ def trace_lineage(
             )
         console.print(flow_table)
     else:
-        console.print("\n[dim]Brak wykrytych krawędzi przesyłania tego obiektu danych.[/dim]")
+        console.print("\n[dim]No transmission flow edges detected for this data object.[/dim]")
 
     console.print()
 
 
 @app.command("export-lineage")
 def export_lineage(
-    data_object_id: Annotated[str, typer.Argument(help="ID obiektu danych do wygenerowania diagramu")],
+    data_object_id: Annotated[str, typer.Argument(help="ID of data object to generate diagram for")],
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
-    output: Annotated[Optional[str], typer.Option("--output", "-o", help="Ścieżka do pliku wyjściowego")] = None,
+    output: Annotated[Optional[str], typer.Option("--output", "-o", help="Output file path")] = None,
 ) -> None:
     """Export Mermaid flowchart diagram of the end-to-end data lineage trajectory."""
     target_path = _resolve_source(source)
@@ -176,12 +176,12 @@ def export_lineage(
     try:
         chart = service.export_lineage_flowchart(data_object_id)
     except KeyError as e:
-        console.print(f"[bold red]Błąd: {e}[/bold red]")
+        console.print(f"[bold red]Error: {e}[/bold red]")
         raise typer.Exit(code=1)
 
     if output:
         out_path = Path(output)
         out_path.write_text(chart, encoding="utf-8")
-        console.print(f"[green]Diagram Mermaid zapisany w pliku:[/green] {out_path.resolve()}")
+        console.print(f"[green]Mermaid diagram saved to file:[/green] {out_path.resolve()}")
     else:
         console.print(chart)

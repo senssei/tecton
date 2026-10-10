@@ -38,7 +38,7 @@ def main(
         None,
         "--version",
         "-v",
-        help="Pokaż wersję programu i wyjdź.",
+        help="Show program version and exit.",
         callback=version_callback,
         is_eager=True,
     ),

@@ -15,11 +15,11 @@ console = Console()
 
 
 def diff_command(
-    base: Annotated[str, typer.Argument(help="Bazowa rewizja Git (np. 'main', 'HEAD~1') lub ścieżka do katalogu bazowego")],
-    head: Annotated[Optional[str], typer.Argument(help="Docelowa rewizja Git lub ścieżka (domyślnie HEAD lub bieżący katalog)")] = None,
-    output_format: Annotated[str, typer.Option("--format", "-f", help="Format wyjścia: table, markdown, pr-comment, json")] = "table",
-    output: Annotated[Optional[str], typer.Option("--output", "-o", help="Ścieżka do pliku wyjściowego")] = None,
-    fail_on_risk: Annotated[bool, typer.Option("--fail-on-risk", help="Zwróć exit code 1 przy wykryciu regresji architektonicznej lub luki")] = False,
+    base: Annotated[str, typer.Argument(help="Base Git revision (e.g. 'main', 'HEAD~1') or path to base directory")],
+    head: Annotated[Optional[str], typer.Argument(help="Target Git revision or path (default HEAD or current directory)")] = None,
+    output_format: Annotated[str, typer.Option("--format", "-f", help="Output format: table, markdown, pr-comment, json")] = "table",
+    output: Annotated[Optional[str], typer.Option("--output", "-o", help="Output file path")] = None,
+    fail_on_risk: Annotated[bool, typer.Option("--fail-on-risk", help="Exit with code 1 if architectural regressions or capability gaps are detected")] = False,
 ) -> None:
     """Compute semantic architectural diff between two Git revisions or architecture directories."""
     service = DiffService()
@@ -34,7 +34,7 @@ def diff_command(
         try:
             report = service.compare_directories(base_path, actual_head, base_label=str(base_path), head_label=str(actual_head))
         except Exception as e:
-            console.print(f"[bold red]Błąd porównania katalogów: {e}[/bold red]")
+            console.print(f"[bold red]Directory diff error: {e}[/bold red]")
             raise typer.Exit(code=1)
     else:
         # Git revision comparison mode
@@ -42,7 +42,7 @@ def diff_command(
         try:
             report = service.compare_git_revisions(base_ref=base, head_ref=actual_head_ref)
         except Exception as e:
-            console.print(f"[bold red]Błąd porównania rewizji Git: {e}[/bold red]")
+            console.print(f"[bold red]Git revision diff error: {e}[/bold red]")
             raise typer.Exit(code=1)
 
     # Format output
@@ -56,7 +56,7 @@ def diff_command(
         md_output = service.to_pr_comment_markdown(report)
         if output:
             Path(output).write_text(md_output, encoding="utf-8")
-            console.print(f"[green]Raport Markdown zapisany w pliku:[/green] {output}")
+            console.print(f"[green]Markdown report saved to file:[/green] {output}")
         else:
             console.print(md_output)
     else:
@@ -70,21 +70,21 @@ def diff_command(
         )
         console.print(Panel(
             f"Status: {status_text}\n"
-            f"• Dodane elementy: [bold green]+{report.added_count}[/bold green]\n"
-            f"• Usunięte elementy: [bold red]-{report.removed_count}[/bold red]\n"
-            f"• Zmodyfikowane elementy: [bold yellow]~{report.modified_count}[/bold yellow]\n"
-            f"• Nowe błędy lintera / ryzyka: [bold red]{len(report.new_risk_issues)}[/bold red]\n"
-            f"• Nowo powstałe luki w zdolnościach: [bold red]{len(report.new_capability_gaps)}[/bold red]",
-            title="Podsumowanie Zmian Architektonicznych",
+            f"• Added entities: [bold green]+{report.added_count}[/bold green]\n"
+            f"• Removed entities: [bold red]-{report.removed_count}[/bold red]\n"
+            f"• Modified entities: [bold yellow]~{report.modified_count}[/bold yellow]\n"
+            f"• New linter errors / risks: [bold red]{len(report.new_risk_issues)}[/bold red]\n"
+            f"• New capability gaps: [bold red]{len(report.new_capability_gaps)}[/bold red]",
+            title="Architectural Change Summary",
         ))
 
         if report.new_risk_issues:
-            console.print("\n[bold red]🚨 Wykryte Nowe Zagrożenia & Błędy Architektoniczne:[/bold red]")
+            console.print("\n[bold red]🚨 New Architectural Risks & Issues Detected:[/bold red]")
             risk_table = Table()
-            risk_table.add_column("Poziom", justify="center")
-            risk_table.add_column("Reguła", style="dim")
-            risk_table.add_column("Element ID", style="bold cyan")
-            risk_table.add_column("Komunikat")
+            risk_table.add_column("Severity", justify="center")
+            risk_table.add_column("Rule", style="dim")
+            risk_table.add_column("Entity ID", style="bold cyan")
+            risk_table.add_column("Message")
 
             for r in report.new_risk_issues:
                 sev_style = "[bold red]ERROR[/bold red]" if r.get("severity") == "ERROR" else "[bold yellow]WARN[/bold yellow]"
@@ -92,17 +92,17 @@ def diff_command(
             console.print(risk_table)
 
         if report.new_capability_gaps:
-            console.print("\n[bold red]⚠️ Nowo Powstałe Białe Plamy (Utrata wsparcia zdolności biznesowych):[/bold red]")
+            console.print("\n[bold red]⚠️ New Capability Blind Spots (Loss of realizing systems):[/bold red]")
             for gap in report.new_capability_gaps:
                 console.print(f"  • [red]{gap}[/red]")
 
         if report.deltas:
-            console.print("\n[bold]Szczegóły Modyfikacji w Modelu Architektury:[/bold]")
+            console.print("\n[bold]Architectural Model Modification Details:[/bold]")
             delta_table = Table()
-            delta_table.add_column("Typ", justify="center")
-            delta_table.add_column("Typ Encji", style="dim")
-            delta_table.add_column("ID Elementu", style="bold")
-            delta_table.add_column("Nazwa / Zmiany Pól")
+            delta_table.add_column("Type", justify="center")
+            delta_table.add_column("Entity Type", style="dim")
+            delta_table.add_column("Entity ID", style="bold")
+            delta_table.add_column("Name / Field Changes")
 
             for d in report.deltas:
                 change_style = (
@@ -121,5 +121,5 @@ def diff_command(
         console.print()
 
     if fail_on_risk and report.has_breaking_changes:
-        console.print("[bold red]❌ BRAMKA ARCHITEKTURY ZABLOKOWANA: Wykryto regresje architektoniczne (--fail-on-risk).[/bold red]")
+        console.print("[bold red]❌ ARCHITECTURE GATE BLOCKED: Architectural regressions detected (--fail-on-risk).[/bold red]")
         raise typer.Exit(code=1)

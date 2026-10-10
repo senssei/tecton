@@ -15,8 +15,8 @@ def test_cli_diff_between_workspaces():
     result = runner.invoke(app, ["diff", str(base_ws), str(head_ws)])
     assert result.exit_code == 0
     assert "Tecton Semantic Architecture Diff" in result.output
-    assert "Podsumowanie Zmian Architektonicznych" in result.output
-    assert "Dodane elementy" in result.output
+    assert "Architectural Change Summary" in result.output
+    assert "Added entities" in result.output
 
 
 def test_cli_diff_format_pr_comment():
@@ -26,7 +26,7 @@ def test_cli_diff_format_pr_comment():
     result = runner.invoke(app, ["diff", str(base_ws), str(head_ws), "--format", "pr-comment"])
     assert result.exit_code == 0
     assert "## 🏛️ Tecton Architecture Review Gate" in result.output
-    assert "Podsumowanie Zmian Architektonicznych" in result.output
+    assert "Architectural Change Summary" in result.output
 
 
 def test_cli_diff_format_json():
@@ -48,4 +48,4 @@ def test_cli_diff_fail_on_risk_flag():
     # Since comparing these two different workspaces creates new gaps, fail_on_risk exits with 1
     result = runner.invoke(app, ["diff", str(base_ws), str(head_ws), "--fail-on-risk"])
     assert result.exit_code == 1
-    assert "BRAMKA ARCHITEKTURY ZABLOKOWANA" in result.output
+    assert "ARCHITECTURE GATE BLOCKED" in result.output

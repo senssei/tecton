@@ -12,7 +12,7 @@ def test_cli_data_list():
     result = runner.invoke(app, ["data", "list", "--source", str(workspace)])
 
     assert result.exit_code == 0
-    assert "Katalog Obiektów Danych Biznesowych" in result.output
+    assert "Business Data Objects Catalog" in result.output
     assert "do-customer-profile" in result.output
     assert "RESTRICTED_PII" in result.output
     assert "do-order-record" in result.output
@@ -23,7 +23,7 @@ def test_cli_data_interfaces():
     result = runner.invoke(app, ["data", "interfaces", "--source", str(workspace)])
 
     assert result.exit_code == 0
-    assert "Katalog Interfejsów & Kontraktów API" in result.output
+    assert "Interfaces & API Contracts Catalog" in result.output
     assert "iface-crm-order-submission" in result.output
     assert "iface-order-fulfillment-stream" in result.output
     assert "sys-crm-core" in result.output
@@ -34,10 +34,10 @@ def test_cli_data_lineage_trace():
     result = runner.invoke(app, ["data", "lineage", "do-customer-profile", "--source", str(workspace)])
 
     assert result.exit_code == 0
-    assert "Ścieżka Pochodzenia Danych (Data Lineage)" in result.output
+    assert "Data Lineage Trajectory" in result.output
     assert "Customer PII Profile" in result.output
-    assert "WYKRYTO" in result.output
-    assert "ZAGROŻEŃ ZGODNOŚCI" in result.output
+    assert "DETECTED" in result.output
+    assert "COMPLIANCE RISKS" in result.output
     assert "COMPLIANCE_SENSITIVE_DATA_ON_ELIMINATE_SYSTEM" in result.output
 
 
@@ -46,7 +46,7 @@ def test_cli_data_lineage_missing_raises_exit_1():
     result = runner.invoke(app, ["data", "lineage", "unknown-data-id", "--source", str(workspace)])
 
     assert result.exit_code == 1
-    assert "Błąd:" in result.output
+    assert "Error:" in result.output
 
 
 def test_cli_data_export_lineage(tmp_path: Path):

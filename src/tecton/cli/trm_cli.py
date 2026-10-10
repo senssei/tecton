@@ -17,7 +17,7 @@ console = Console()
 def _resolve_source(source: str | None) -> Path:
     target = Path(source) if source else Path(".")
     if not target.exists():
-        console.print(f"[bold red]Błąd: Ścieżka '{target}' nie istnieje.[/bold red]")
+        console.print(f"[bold red]Error: Path '{target}' does not exist.[/bold red]")
         raise typer.Exit(code=1)
     return target
 
@@ -32,16 +32,16 @@ def list_technologies(
     report = service.evaluate_technologies()
 
     if not report.technologies:
-        console.print("[yellow]Brak technologii zarejestrowanych w katalogu architektury.[/yellow]")
+        console.print("[yellow]No technologies registered in architecture catalog.[/yellow]")
         return
 
-    table = Table(title=f"Katalog Standardów Technologicznych ({report.total_technologies} technologii)")
+    table = Table(title=f"Technology Standards Catalog ({report.total_technologies} technologies)")
     table.add_column("ID", style="dim", no_wrap=True)
-    table.add_column("Nazwa Technologii", style="bold cyan")
-    table.add_column("Kategoria", style="magenta")
-    table.add_column("Status Radaru", justify="center")
-    table.add_column("Data EOL", justify="center")
-    table.add_column("Aplikacje", justify="right")
+    table.add_column("Technology Name", style="bold cyan")
+    table.add_column("Category", style="magenta")
+    table.add_column("Radar Status", justify="center")
+    table.add_column("EOL Date", justify="center")
+    table.add_column("Applications", justify="right")
 
     for t in report.technologies:
         # Color coding status
@@ -58,9 +58,9 @@ def list_technologies(
         eol_str = "-"
         if t.eol_date:
             if t.is_eol:
-                eol_str = f"[bold red]{t.eol_date} (PRZETERMINOWANE)[/bold red]"
+                eol_str = f"[bold red]{t.eol_date} (EXPIRED)[/bold red]"
             else:
-                eol_str = f"[green]{t.eol_date}[/green] ({t.days_to_eol} dni)"
+                eol_str = f"[green]{t.eol_date}[/green] ({t.days_to_eol} days)"
 
         table.add_row(
             t.id,
@@ -74,16 +74,16 @@ def list_technologies(
     console.print()
     console.print(table)
     console.print(
-        f"Podsumowanie: [green]{report.approved_count} zatwierdzonych[/green], "
-        f"[yellow]{report.deprecated_count} wycofywanych[/yellow], "
-        f"[red]{report.prohibited_count} zakazanych[/red], "
-        f"[bold red]{report.eol_count} przeterminowanych EOL[/bold red].\n"
+        f"Summary: [green]{report.approved_count} approved[/green], "
+        f"[yellow]{report.deprecated_count} deprecated[/yellow], "
+        f"[red]{report.prohibited_count} prohibited[/red], "
+        f"[bold red]{report.eol_count} past EOL[/bold red].\n"
     )
 
 
 @app.command("blast-radius")
 def calculate_blast_radius(
-    technology_id: Annotated[str, typer.Argument(help="ID technologii do analizy promienia rażenia")],
+    technology_id: Annotated[str, typer.Argument(help="Technology ID to evaluate blast radius")],
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
 ) -> None:
     """Calculate direct and cascading blast radius if a technology fails or reaches EOL."""
@@ -93,33 +93,33 @@ def calculate_blast_radius(
     try:
         report = service.calculate_blast_radius(technology_id)
     except KeyError as e:
-        console.print(f"[bold red]Błąd: {e}[/bold red]")
+        console.print(f"[bold red]Error: {e}[/bold red]")
         raise typer.Exit(code=1)
 
     risk_style = "bold red" if report.risk_score >= 60 else "bold yellow" if report.risk_score >= 30 else "green"
 
-    console.print(f"\n[bold]Analiza Promienia Rażenia (Blast Radius):[/bold] [cyan]{report.technology_name}[/cyan] ({report.technology_id})")
+    console.print(f"\n[bold]Blast Radius Impact Analysis:[/bold] [cyan]{report.technology_name}[/cyan] ({report.technology_id})")
     console.print(Panel(
-        f"[bold]Podsumowanie:[/bold] {report.summary}\n\n"
-        f"• Status Technologii: [bold]{report.status.value.upper()}[/bold] "
-        f"({'[bold red]⚠️ WYGASŁY EOL[/bold red]' if report.is_eol else '[green]Aktywny[/green]'})\n"
-        f"• Najwyższa Naruszona Krytyczność: [bold magenta]{report.highest_criticality}[/bold magenta]\n"
-        f"• Wyliczony Wskaźnik Ryzyka: [{risk_style}]{report.risk_score}/100.0[/{risk_style}]",
-        title="Ocena Ryzyka Architektonicznego",
+        f"[bold]Summary:[/bold] {report.summary}\n\n"
+        f"• Technology Status: [bold]{report.status.value.upper()}[/bold] "
+        f"({'[bold red]⚠️ EXPIRED EOL[/bold red]' if report.is_eol else '[green]Active[/green]'})\n"
+        f"• Highest Impacted Criticality: [bold magenta]{report.highest_criticality}[/bold magenta]\n"
+        f"• Calculated Risk Score: [{risk_style}]{report.risk_score}/100.0[/{risk_style}]",
+        title="Architectural Risk Assessment",
     ))
 
-    table = Table(title="Kaskadowa Propagacja Zagrożenia w Architekturze")
-    table.add_column("Poziom Wpływu", style="bold")
-    table.add_column("Liczba", justify="right")
-    table.add_column("Dotknięte Zasoby Architektury")
+    table = Table(title="Cascading Architecture Blast Radius Propagation")
+    table.add_column("Impact Level", style="bold")
+    table.add_column("Count", justify="right")
+    table.add_column("Impacted Architecture Assets")
 
-    direct_display = ", ".join(report.directly_affected_system_names) if report.directly_affected_system_names else "[dim]Brak[/dim]"
-    cascading_display = ", ".join(report.cascading_system_names) if report.cascading_system_names else "[dim]Brak[/dim]"
-    caps_display = ", ".join(report.compromised_capability_ids) if report.compromised_capability_ids else "[dim]Brak[/dim]"
+    direct_display = ", ".join(report.directly_affected_system_names) if report.directly_affected_system_names else "[dim]None[/dim]"
+    cascading_display = ", ".join(report.cascading_system_names) if report.cascading_system_names else "[dim]None[/dim]"
+    caps_display = ", ".join(report.compromised_capability_ids) if report.compromised_capability_ids else "[dim]None[/dim]"
 
-    table.add_row("[bold red]Bezpośrednio Dotknięte Systemy[/bold red]", str(len(report.directly_affected_system_ids)), direct_display)
-    table.add_row("[bold yellow]Kaskadowo Zależne Systemy[/bold yellow]", str(len(report.cascading_system_ids)), cascading_display)
-    table.add_row("[bold cyan]Zagrożone Zdolności Biznesowe[/bold cyan]", str(len(report.compromised_capability_ids)), caps_display)
+    table.add_row("[bold red]Directly Impacted Systems[/bold red]", str(len(report.directly_affected_system_ids)), direct_display)
+    table.add_row("[bold yellow]Cascading Dependent Systems[/bold yellow]", str(len(report.cascading_system_ids)), cascading_display)
+    table.add_row("[bold cyan]Compromised Business Capabilities[/bold cyan]", str(len(report.compromised_capability_ids)), caps_display)
 
     console.print(table)
     console.print()
@@ -138,6 +138,6 @@ def export_radar(
     if output:
         out_path = Path(output)
         out_path.write_text(chart, encoding="utf-8")
-        console.print(f"[green]Radar technologii Mermaid zapisany w pliku:[/green] {out_path.resolve()}")
+        console.print(f"[green]Mermaid Technology Radar saved to file:[/green] {out_path.resolve()}")
     else:
         console.print(chart)

@@ -21,14 +21,14 @@ def run_validation(
     """Validate architecture DSL workspace and enforce CI/CD quality gate."""
     target_path = path.resolve()
     if not target_path.exists():
-        console.print(f"[bold red]Błąd: Ścieżka '{target_path}' nie istnieje.[/bold red]")
+        console.print(f"[bold red]Error: Path '{target_path}' does not exist.[/bold red]")
         raise typer.Exit(code=1)
 
     parser = C4EAMParser()
     try:
         graph = parser.parse_directory(target_path)
     except Exception as e:
-        console.print(f"[bold red]Krytyczny błąd parsowania manifestu: {e}[/bold red]")
+        console.print(f"[bold red]Critical manifest parsing error: {e}[/bold red]")
         raise typer.Exit(code=1)
 
     linter = GraphLinter()
@@ -59,28 +59,28 @@ def run_validation(
     # Table format
     console.print("\n[bold cyan]Tecton Architecture Quality Gate & Graph Linter[/bold cyan]")
     console.print(
-        f"Skanowanie katalogu: [dim]{target_path}[/dim] "
-        f"({len(graph.files_parsed)} plików, "
-        f"{len(graph.capabilities)} zdolności, "
-        f"{len(graph.systems)} systemów, "
-        f"{len(graph.containers)} kontenerów, "
-        f"{len(graph.relationships)} relacji, "
-        f"{len(graph.technologies)} technologii)"
+        f"Scanning directory: [dim]{target_path}[/dim] "
+        f"({len(graph.files_parsed)} files, "
+        f"{len(graph.capabilities)} capabilities, "
+        f"{len(graph.systems)} systems, "
+        f"{len(graph.containers)} containers, "
+        f"{len(graph.relationships)} relationships, "
+        f"{len(graph.technologies)} technologies)"
     )
 
     if not report.issues:
         console.print(
-            "\n[bold green]✓ Architektura poprawna.[/bold green] "
-            "Brak błędów integralności referencyjnej, cykli ani naruszeń cyklu życia.\n"
+            "\n[bold green]✓ Architecture valid.[/bold green] "
+            "No referential integrity errors, cycles, or lifecycle violations.\n"
         )
         return
 
-    table = Table(title="Wykryte Problemy Architektoniczne")
+    table = Table(title="Architectural Issues Detected")
     table.add_column("Severity", justify="center", no_wrap=True)
     table.add_column("Rule", style="dim", no_wrap=True)
     table.add_column("Entity ID", style="bold cyan")
-    table.add_column("Komunikat")
-    table.add_column("Plik Źródłowy", style="dim")
+    table.add_column("Message")
+    table.add_column("Source File", style="dim")
 
     for issue in report.issues:
         sev_style = (
@@ -100,27 +100,27 @@ def run_validation(
     console.print()
     console.print(table)
     console.print(
-        f"\nPodsumowanie: [bold red]{report.error_count} błędów[/bold red], "
-        f"[bold yellow]{report.warning_count} ostrzeżeń[/bold yellow]."
+        f"\nSummary: [bold red]{report.error_count} errors[/bold red], "
+        f"[bold yellow]{report.warning_count} warnings[/bold yellow]."
     )
 
     # Determine exit code for CI/CD gates
     if report.has_errors:
-        console.print("[bold red]❌ BRAMKA CI/CD ZABLOKOWANA: Wykryto błędy krytyczne w grafie architektury.[/bold red]")
+        console.print("[bold red]❌ CI/CD QUALITY GATE BLOCKED: Critical errors detected in architecture graph.[/bold red]")
         raise typer.Exit(code=1)
 
     if strict and report.warning_count > 0:
-        console.print("[bold red]❌ BRAMKA CI/CD ZABLOKOWANA: Tryb --strict wykrył ostrzeżenia.[/bold red]")
+        console.print("[bold red]❌ CI/CD QUALITY GATE BLOCKED: Strict mode detected warnings.[/bold red]")
         raise typer.Exit(code=1)
 
-    console.print("[bold green]✓ BRAMKA CI/CD ZATWIERDZONA (Exit code 0).[/bold green]\n")
+    console.print("[bold green]✓ CI/CD QUALITY GATE PASSED (Exit code 0).[/bold green]\n")
 
 
 def validate_command(
     path: Annotated[
         Path,
         typer.Argument(
-            help="Ścieżka do katalogu architektury lub pliku manifestu",
+            help="Path to architecture directory or manifest file",
             exists=True,
             file_okay=True,
             dir_okay=True,
@@ -129,11 +129,11 @@ def validate_command(
     ] = Path("."),
     strict: Annotated[
         bool,
-        typer.Option("--strict", "-s", help="Traktuj ostrzeżenia jako błędy krytyczne (exit code 1)"),
+        typer.Option("--strict", "-s", help="Treat warnings as critical errors (exit code 1)"),
     ] = False,
     output_format: Annotated[
         str,
-        typer.Option("--format", "-f", help="Format wyjścia: table lub json"),
+        typer.Option("--format", "-f", help="Output format: table or json"),
     ] = "table",
 ) -> None:
     """Validate architecture DSL workspace and enforce referential integrity & DAG invariants."""
