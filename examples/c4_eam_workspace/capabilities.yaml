@@ -1,0 +1,34 @@
+# Business Capability Map (Hierarchical L1 / L2 definitions)
+capabilities:
+  - id: cap-order-mgmt
+    name: Order Management
+    level: L1
+    description: Core enterprise capabilities for order processing and lifecycle
+
+  - id: cap-order-capture
+    name: Order Capture & Checkout
+    level: L2
+    parent_id: cap-order-mgmt
+    description: Omni-channel capture of customer orders
+
+  - id: cap-order-fulfillment
+    name: Order Fulfillment & Logistics
+    level: L2
+    parent_id: cap-order-mgmt
+    description: Warehouse assignment, shipping, and delivery tracking
+
+  - id: cap-billing
+    name: Billing & Revenue Operations
+    level: L1
+    description: Customer billing, rating, and revenue collection
+
+  - id: cap-invoicing
+    name: Invoicing & Accounts Receivable
+    level: L2
+    parent_id: cap-billing
+    description: Generation of invoices and payment reconciliations
+
+  - id: cap-analytics
+    name: Enterprise Analytics & Intelligence
+    level: L1
+    description: Business intelligence, data warehousing, and reporting

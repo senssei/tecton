@@ -1,0 +1,183 @@
+[
+  {
+    "id": "tecton-cli",
+    "name": "Tecton Unified CLI Toolchain",
+    "business_criticality": "Mission Critical",
+    "functional_suitability": 4.8,
+    "technical_suitability": 4.6,
+    "time_classification": "INVEST",
+    "current_phase": "active",
+    "capabilities": [
+      "Architecture CLI",
+      "Living Documentation Export",
+      "Quality Gate Enforcement"
+    ],
+    "user_groups": [
+      "Enterprise Architects",
+      "Platform Engineers",
+      "CI/CD Automations"
+    ],
+    "tags": ["core", "cli", "python", "typer"],
+    "lifecycle": {
+      "phases": [
+        {"phase": "plan", "start_date": "2026-10-01"},
+        {"phase": "phaseIn", "start_date": "2026-10-05"},
+        {"phase": "active", "start_date": "2026-10-10"},
+        {"phase": "endOfLife", "start_date": "2035-12-31"}
+      ]
+    }
+  },
+  {
+    "id": "tecton-engine-time",
+    "name": "Tecton TIME Scoring Engine",
+    "business_criticality": "Mission Critical",
+    "functional_suitability": 5.0,
+    "technical_suitability": 4.8,
+    "time_classification": "INVEST",
+    "current_phase": "active",
+    "capabilities": [
+      "Portfolio Scoring",
+      "TIME Classification",
+      "Patch Delta Generation"
+    ],
+    "user_groups": [
+      "Enterprise Architects",
+      "Solution Architects"
+    ],
+    "tags": ["core", "engine", "analytics", "gartner-time"],
+    "lifecycle": {
+      "phases": [
+        {"phase": "plan", "start_date": "2026-10-01"},
+        {"phase": "active", "start_date": "2026-10-10"},
+        {"phase": "endOfLife", "start_date": "2035-12-31"}
+      ]
+    }
+  },
+  {
+    "id": "tecton-engine-redundancy",
+    "name": "Tecton Redundancy Clustering Engine",
+    "business_criticality": "Business Critical",
+    "functional_suitability": 4.6,
+    "technical_suitability": 4.7,
+    "time_classification": "INVEST",
+    "current_phase": "active",
+    "capabilities": [
+      "Redundancy Detection",
+      "Portfolio Rationalization",
+      "Set Similarity Clustering"
+    ],
+    "user_groups": [
+      "Enterprise Architects",
+      "Engineering Directors"
+    ],
+    "tags": ["core", "engine", "jaccard", "rationalization"],
+    "lifecycle": {
+      "phases": [
+        {"phase": "plan", "start_date": "2026-10-01"},
+        {"phase": "active", "start_date": "2026-10-10"},
+        {"phase": "endOfLife", "start_date": "2035-12-31"}
+      ]
+    }
+  },
+  {
+    "id": "tecton-engine-lifecycle",
+    "name": "Tecton Lifecycle Governance Validator",
+    "business_criticality": "Business Operational",
+    "functional_suitability": 4.5,
+    "technical_suitability": 4.5,
+    "time_classification": "INVEST",
+    "current_phase": "active",
+    "capabilities": [
+      "Lifecycle Governance",
+      "Chronological Anomaly Detection",
+      "Audit Reporting"
+    ],
+    "user_groups": [
+      "Compliance Officers",
+      "Solution Architects"
+    ],
+    "tags": ["governance", "validation", "lifecycle"],
+    "lifecycle": {
+      "phases": [
+        {"phase": "plan", "start_date": "2026-10-01"},
+        {"phase": "active", "start_date": "2026-10-10"},
+        {"phase": "endOfLife", "start_date": "2035-12-31"}
+      ]
+    }
+  },
+  {
+    "id": "tecton-adapter-graphql",
+    "name": "Tecton Remote Graph API Adapter",
+    "business_criticality": "Business Operational",
+    "functional_suitability": 4.0,
+    "technical_suitability": 4.2,
+    "time_classification": "INVEST",
+    "current_phase": "active",
+    "capabilities": [
+      "Remote Graph Synchronization",
+      "EAM Data Ingestion",
+      "GraphQL Mutation Generation"
+    ],
+    "user_groups": [
+      "Platform Engineers",
+      "DevOps Automations"
+    ],
+    "tags": ["adapter", "graphql", "integration"],
+    "lifecycle": {
+      "phases": [
+        {"phase": "plan", "start_date": "2026-10-01"},
+        {"phase": "active", "start_date": "2026-10-10"},
+        {"phase": "endOfLife", "start_date": "2035-12-31"}
+      ]
+    }
+  },
+  {
+    "id": "tecton-exporter-mermaid",
+    "name": "Tecton Living Mermaid Exporter",
+    "business_criticality": "Business Operational",
+    "functional_suitability": 4.8,
+    "technical_suitability": 4.7,
+    "time_classification": "INVEST",
+    "current_phase": "active",
+    "capabilities": [
+      "Visual Diagram Generation",
+      "Mermaid Charting",
+      "Living Documentation Export"
+    ],
+    "user_groups": [
+      "Enterprise Architects",
+      "Tech Leads"
+    ],
+    "tags": ["exporter", "mermaid", "living-docs"],
+    "lifecycle": {
+      "phases": [
+        {"phase": "plan", "start_date": "2026-10-01"},
+        {"phase": "active", "start_date": "2026-10-10"},
+        {"phase": "endOfLife", "start_date": "2035-12-31"}
+      ]
+    }
+  },
+  {
+    "id": "tecton-legacy-script",
+    "name": "Tecton Prototype Export Script",
+    "business_criticality": "Administrative",
+    "functional_suitability": 1.8,
+    "technical_suitability": 1.5,
+    "time_classification": "UNKNOWN",
+    "current_phase": "phaseOut",
+    "capabilities": [
+      "Ad-hoc CSV Dumper"
+    ],
+    "user_groups": [
+      "Tecton Core Dev"
+    ],
+    "tags": ["legacy", "deprecated", "prototype"],
+    "lifecycle": {
+      "phases": [
+        {"phase": "active", "start_date": "2026-09-01"},
+        {"phase": "phaseOut", "start_date": "2026-10-01"},
+        {"phase": "endOfLife", "start_date": "2026-11-01"}
+      ]
+    }
+  }
+]

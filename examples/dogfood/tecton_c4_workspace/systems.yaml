@@ -1,0 +1,154 @@
+# Tecton Core Systems Architecture
+systems:
+  - id: sys-tecton-cli
+    name: Tecton Unified CLI Toolchain
+    description: Primary command-line interface entry point coordinating APM, linting, and exports
+    business_criticality: MISSION_CRITICAL
+    functional_suitability: 4.9
+    technical_suitability: 4.8
+    time_classification: INVEST
+    current_phase: active
+    capabilities:
+      - cap-cli
+      - cap-living-docs
+    user_groups:
+      - Enterprise Architects
+      - Platform Engineers
+      - CI/CD Automations
+    technologies:
+      - tech-python-312
+      - tech-typer
+      - tech-rich
+    lifecycle:
+      phases:
+        - phase: plan
+          start_date: 2026-10-01
+        - phase: active
+          start_date: 2026-10-10
+        - phase: endOfLife
+          start_date: 2035-12-31
+
+  - id: sys-tecton-dsl-linter
+    name: Tecton Quality Gate & Linter
+    description: Graph integrity compiler enforcing DAG invariants and zero dangling references
+    business_criticality: MISSION_CRITICAL
+    functional_suitability: 5.0
+    technical_suitability: 4.9
+    time_classification: INVEST
+    current_phase: active
+    capabilities:
+      - cap-quality-gate
+    user_groups:
+      - CI/CD Automations
+      - Platform Engineers
+    technologies:
+      - tech-python-312
+      - tech-pydantic-v2
+    lifecycle:
+      phases:
+        - phase: plan
+          start_date: 2026-10-01
+        - phase: active
+          start_date: 2026-10-10
+        - phase: endOfLife
+          start_date: 2035-12-31
+
+  - id: sys-tecton-engine-time
+    name: Tecton TIME Scoring Engine
+    description: Gartner TIME matrix placement and JSON patch generation
+    business_criticality: MISSION_CRITICAL
+    functional_suitability: 5.0
+    technical_suitability: 4.9
+    time_classification: INVEST
+    current_phase: active
+    capabilities:
+      - cap-time
+    user_groups:
+      - Enterprise Architects
+    technologies:
+      - tech-python-312
+      - tech-pydantic-v2
+    lifecycle:
+      phases:
+        - phase: plan
+          start_date: 2026-10-01
+        - phase: active
+          start_date: 2026-10-10
+        - phase: endOfLife
+          start_date: 2035-12-31
+
+  - id: sys-tecton-engine-redundancy
+    name: Tecton Redundancy Clustering Engine
+    description: Weighted Jaccard set similarity rationalization across capabilities and user groups
+    business_criticality: BUSINESS_CRITICAL
+    functional_suitability: 4.7
+    technical_suitability: 4.8
+    time_classification: INVEST
+    current_phase: active
+    capabilities:
+      - cap-redundancy
+    user_groups:
+      - Enterprise Architects
+      - Engineering Directors
+    technologies:
+      - tech-python-312
+      - tech-pydantic-v2
+    lifecycle:
+      phases:
+        - phase: plan
+          start_date: 2026-10-01
+        - phase: active
+          start_date: 2026-10-10
+        - phase: endOfLife
+          start_date: 2035-12-31
+
+  - id: sys-tecton-adapter-git
+    name: Tecton Git Architecture-as-Code Adapter
+    description: Hexagonal adapter ingesting distributed Git repositories and compiling in-memory graphs
+    business_criticality: MISSION_CRITICAL
+    functional_suitability: 4.8
+    technical_suitability: 4.7
+    time_classification: INVEST
+    current_phase: active
+    capabilities:
+      - cap-git-eam
+    user_groups:
+      - Enterprise Architects
+      - DevOps Automations
+    technologies:
+      - tech-python-312
+      - tech-pyyaml
+      - tech-pydantic-v2
+    lifecycle:
+      phases:
+        - phase: plan
+          start_date: 2026-10-01
+        - phase: active
+          start_date: 2026-10-10
+        - phase: endOfLife
+          start_date: 2035-12-31
+
+  - id: sys-tecton-exporter-mermaid
+    name: Tecton Living Mermaid Exporter
+    description: Deterministic exporter of TIME quadrant charts and markdown architecture dossiers
+    business_criticality: BUSINESS_CRITICAL
+    functional_suitability: 4.8
+    technical_suitability: 4.7
+    time_classification: INVEST
+    current_phase: active
+    capabilities:
+      - cap-living-docs
+    user_groups:
+      - Enterprise Architects
+      - Tech Leads
+    technologies:
+      - tech-python-312
+      - tech-mermaid
+    lifecycle:
+      phases:
+        - phase: plan
+          start_date: 2026-10-01
+        - phase: active
+          start_date: 2026-10-10
+        - phase: endOfLife
+          start_date: 2035-12-31

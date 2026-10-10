@@ -1,0 +1,37 @@
+# Tecton Technology Standards Radar
+technologies:
+  - id: tech-python-312
+    name: Python 3.12+
+    category: runtime
+    status: approved
+    description: High-performance typed modern Python runtime
+
+  - id: tech-pydantic-v2
+    name: Pydantic v2
+    category: framework
+    status: approved
+    description: Core schema validation and fast Rust-backed model serialization
+
+  - id: tech-typer
+    name: Typer
+    category: framework
+    status: approved
+    description: CLI ergonomics and POSIX-compliant command routing
+
+  - id: tech-rich
+    name: Rich
+    category: library
+    status: approved
+    description: ANSI color formatting and terminal table generation
+
+  - id: tech-mermaid
+    name: Mermaid.js
+    category: visual
+    status: approved
+    description: Declarative architecture diagram and quadrant chart generator
+
+  - id: tech-pyyaml
+    name: PyYAML Safe
+    category: library
+    status: approved
+    description: Safe YAML parsing and file serialization

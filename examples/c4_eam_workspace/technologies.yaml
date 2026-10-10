@@ -1,0 +1,26 @@
+# Enterprise Technology Radar Standards
+technologies:
+  - id: tech-python-312
+    name: Python 3.12+
+    category: runtime
+    status: approved
+    description: Standard corporate backend runtime for microservices
+
+  - id: tech-postgresql-16
+    name: PostgreSQL 16
+    category: database
+    status: approved
+    description: Primary relational enterprise database
+
+  - id: tech-fastapi
+    name: FastAPI
+    category: framework
+    status: approved
+    description: Preferred modern REST API framework
+
+  - id: tech-legacy-solaris
+    name: Oracle Solaris 10
+    category: operating_system
+    status: deprecated
+    eol_date: 2024-01-01
+    description: Deprecated legacy operating system slated for decommissioning

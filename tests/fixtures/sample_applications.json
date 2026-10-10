@@ -1,0 +1,114 @@
+[
+  {
+    "id": "app-001-crm-global",
+    "name": "Global Salesforce CRM",
+    "business_criticality": "Mission Critical",
+    "functional_suitability": 4.5,
+    "technical_suitability": 4.2,
+    "time_classification": "UNKNOWN",
+    "current_phase": "active",
+    "capabilities": ["Customer Relationship Management", "Lead Tracking", "Pipeline Forecasting"],
+    "user_groups": ["Sales EMEA", "Sales US", "Customer Success"],
+    "tags": ["cloud", "saas", "tier-1"],
+    "lifecycle": {
+      "phases": [
+        {"phase": "plan", "start_date": "2023-01-01"},
+        {"phase": "phaseIn", "start_date": "2023-06-01"},
+        {"phase": "active", "start_date": "2024-01-01"},
+        {"phase": "endOfLife", "start_date": "2032-12-31"}
+      ]
+    }
+  },
+  {
+    "id": "app-002-crm-regional",
+    "name": "Regional SalesTracker",
+    "business_criticality": "Business Operational",
+    "functional_suitability": 2.8,
+    "technical_suitability": 2.1,
+    "time_classification": "UNKNOWN",
+    "current_phase": "active",
+    "capabilities": ["Customer Relationship Management", "Lead Tracking", "Pipeline Forecasting"],
+    "user_groups": ["Sales EMEA", "Sales US"],
+    "tags": ["legacy", "on-premise"],
+    "lifecycle": {
+      "phases": [
+        {"phase": "plan", "start_date": "2018-01-01"},
+        {"phase": "active", "start_date": "2018-06-01"},
+        {"phase": "phaseOut", "start_date": "2025-01-01"}
+      ]
+    }
+  },
+  {
+    "id": "app-003-core-banking",
+    "name": "Mainframe Core Ledger",
+    "business_criticality": "Mission Critical",
+    "functional_suitability": 4.8,
+    "technical_suitability": 1.9,
+    "time_classification": "UNKNOWN",
+    "current_phase": "active",
+    "capabilities": ["Transaction Ledger", "Account Balance Management", "Interest Calculation"],
+    "user_groups": ["Back Office Operations", "Risk Compliance"],
+    "tags": ["mainframe", "cobol", "mission-critical"],
+    "lifecycle": {
+      "phases": [
+        {"phase": "active", "start_date": "2005-01-01"},
+        {"phase": "endOfLife", "start_date": "2030-12-31"}
+      ]
+    }
+  },
+  {
+    "id": "app-004-modern-devtool",
+    "name": "K8s Microservice Mesh",
+    "business_criticality": "Business Operational",
+    "functional_suitability": 2.2,
+    "technical_suitability": 4.6,
+    "time_classification": "UNKNOWN",
+    "current_phase": "active",
+    "capabilities": ["Internal Developer Platform", "Service Discovery"],
+    "user_groups": ["Platform Engineering"],
+    "tags": ["kubernetes", "go", "cloud-native"],
+    "lifecycle": {
+      "phases": [
+        {"phase": "plan", "start_date": "2024-01-01"},
+        {"phase": "active", "start_date": "2024-05-01"}
+      ]
+    }
+  },
+  {
+    "id": "app-005-legacy-billing",
+    "name": "Old Billing Invoicer",
+    "business_criticality": "Administrative",
+    "functional_suitability": 1.8,
+    "technical_suitability": 1.5,
+    "time_classification": "UNKNOWN",
+    "current_phase": "active",
+    "capabilities": ["Batch Invoicing", "PDF Export"],
+    "user_groups": ["Finance EMEA"],
+    "tags": ["legacy", "deprecated"],
+    "lifecycle": {
+      "phases": [
+        {"phase": "active", "start_date": "2015-01-01"},
+        {"phase": "phaseOut", "start_date": "2022-01-01"},
+        {"phase": "endOfLife", "start_date": "2023-01-01"}
+      ]
+    }
+  },
+  {
+    "id": "app-006-corrupt-lifecycle",
+    "name": "Malformed Lifecycle System",
+    "business_criticality": "Administrative",
+    "functional_suitability": 3.0,
+    "technical_suitability": 3.0,
+    "time_classification": "UNKNOWN",
+    "current_phase": "plan",
+    "capabilities": ["Data Archiving"],
+    "user_groups": ["IT Operations"],
+    "tags": ["test"],
+    "lifecycle": {
+      "phases": [
+        {"phase": "active", "start_date": "2025-01-01"},
+        {"phase": "plan", "start_date": "2026-01-01"}
+      ]
+    }
+  }
+]

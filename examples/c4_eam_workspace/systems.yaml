@@ -1,0 +1,71 @@
+# Software Systems with Gartner TIME Attributes and Lifecycles
+systems:
+  - id: sys-crm-core
+    name: Global CRM Platform
+    description: Central cloud-native CRM platform handling customer accounts and leads
+    business_criticality: MISSION_CRITICAL
+    functional_suitability: 4.6
+    technical_suitability: 4.4
+    time_classification: INVEST
+    current_phase: active
+    capabilities:
+      - cap-order-capture
+    user_groups:
+      - Sales
+      - Customer Support
+    technologies:
+      - tech-python-312
+      - tech-fastapi
+      - tech-postgresql-16
+    lifecycle:
+      phases:
+        - phase: plan
+          start_date: 2021-01-01
+        - phase: phaseIn
+          start_date: 2021-06-01
+        - phase: active
+          start_date: 2022-01-01
+
+  - id: sys-order-router
+    name: Omni-Channel Order Routing Engine
+    description: Microservice distributing captured orders to respective regional fulfillment centers
+    business_criticality: BUSINESS_CRITICAL
+    functional_suitability: 4.2
+    technical_suitability: 4.0
+    time_classification: INVEST
+    current_phase: active
+    capabilities:
+      - cap-order-fulfillment
+    user_groups:
+      - Logistics
+      - Warehousing
+    technologies:
+      - tech-python-312
+      - tech-postgresql-16
+    lifecycle:
+      phases:
+        - phase: active
+          start_date: 2022-03-01
+
+  - id: sys-legacy-billing
+    name: Mainframe Monolith Billing System
+    description: 20-year old billing monolith maintaining accounts receivable
+    business_criticality: OPERATIONAL
+    functional_suitability: 2.2
+    technical_suitability: 1.8
+    time_classification: ELIMINATE
+    current_phase: phaseOut
+    capabilities:
+      - cap-invoicing
+    user_groups:
+      - Finance Operations
+    technologies:
+      - tech-legacy-solaris
+    lifecycle:
+      phases:
+        - phase: active
+          start_date: 2004-01-01
+        - phase: phaseOut
+          start_date: 2023-01-01
+        - phase: endOfLife
+          start_date: 2026-12-31

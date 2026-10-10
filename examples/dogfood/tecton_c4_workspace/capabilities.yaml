@@ -1,0 +1,58 @@
+# Tecton Enterprise Capabilities (Self-Architecture)
+capabilities:
+  - id: cap-cli
+    name: Architecture CLI & Toolchain
+    level: L1
+    description: Developer ergonomics, CI/CD runners, and command execution
+
+  - id: cap-quality-gate
+    name: Architecture Quality Gate & Linting
+    level: L2
+    parent_id: cap-cli
+    description: Referential integrity validation, DAG cycle detection, and Git pre-merge enforcement
+
+  - id: cap-living-docs
+    name: Living Documentation & Visual Reporting
+    level: L2
+    parent_id: cap-cli
+    description: Markdown report synthesis and Mermaid diagram rendering
+
+  - id: cap-engines
+    name: Deterministic Architecture Analytics
+    level: L1
+    description: Core analytical engines providing offline-first architecture evaluations
+
+  - id: cap-time
+    name: TIME Portfolio Classification
+    level: L2
+    parent_id: cap-engines
+    description: Gartner TIME quadrant classification and mutation patch generation
+
+  - id: cap-redundancy
+    name: Functional Redundancy Rationalization
+    level: L2
+    parent_id: cap-engines
+    description: Weighted Jaccard set similarity clustering for application deduplication
+
+  - id: cap-governance
+    name: Timeline & Lifecycle Governance
+    level: L2
+    parent_id: cap-engines
+    description: Chronological validation and End-of-Life phase audit checks
+
+  - id: cap-adapters
+    name: Storage Ports & Repository Adapters
+    level: L1
+    description: Hexagonal architecture boundary connecting domain to backends
+
+  - id: cap-git-eam
+    name: Git Architecture-as-Code Ingestion
+    level: L2
+    parent_id: cap-adapters
+    description: Directory manifest parser, in-memory graph compiler, and YAML patch persister
+
+  - id: cap-graphql
+    name: Remote Graph Synchronization
+    level: L2
+    parent_id: cap-adapters
+    description: GraphQL upstream and downstream synchronization adapter

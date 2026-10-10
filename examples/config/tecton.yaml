@@ -1,0 +1,20 @@
+# Tecton Architecture-as-Code Configuration
+dry_run: true
+
+# Gartner TIME Evaluation Thresholds
+time:
+  business_threshold: 3.5
+  technical_threshold: 3.5
+
+# Functional Redundancy Clustering Weights
+redundancy:
+  capability_weight: 0.70
+  user_group_weight: 0.30
+  similarity_threshold: 0.70
+
+# Remote EAM Graph Repository (Optional for online sync)
+repository:
+  url: "https://example-eam.local/graphql"
+  token: "sec_token_demo"
+  timeout_seconds: 30
+  verify_ssl: true

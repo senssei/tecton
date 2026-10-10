@@ -1,0 +1,13 @@
+# Explicit Architectural Relationships & Dependencies
+relationships:
+  - source_id: sys-crm-core
+    target_id: sys-order-router
+    relation_type: depends_on
+    technology: REST / JSON over TLS
+    description: Sends submitted orders for regional routing
+
+  - source_id: sys-order-router
+    target_id: sys-legacy-billing
+    relation_type: integrates_with
+    technology: Apache Kafka Events
+    description: Publishes order fulfillment events for invoice generation

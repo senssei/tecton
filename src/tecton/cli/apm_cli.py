@@ -1,0 +1,224 @@
+"""CLI subcommands for Application Portfolio Management (APM)."""
+
+from pathlib import Path
+from typing import Annotated, Optional
+import typer
+from rich.console import Console
+from rich.table import Table
+
+from tecton.adapters.base import ArchitectureRepositoryPort
+from tecton.adapters.file_adapter import FileRepositoryAdapter
+from tecton.adapters.git_adapter import GitRepositoryAdapter
+from tecton.adapters.graphql_adapter import GraphQLRepositoryAdapter
+from tecton.adapters.in_memory import InMemoryRepositoryAdapter
+from tecton.core.config import TectonConfig
+from tecton.core.models import RedundancyConfig, TimeConfig, TimeQuadrant
+from tecton.exporters.markdown import MarkdownExporter
+from tecton.exporters.mermaid import MermaidExporter
+from tecton.services.apm_service import APMService
+
+app = typer.Typer(name="apm", help="Application Portfolio Management commands.")
+console = Console()
+
+
+def get_repository(source: str | None, config: TectonConfig) -> ArchitectureRepositoryPort:
+    """Resolve repository adapter based on command line source or configuration."""
+    if source:
+        src_path = Path(source)
+        if src_path.is_file():
+            return FileRepositoryAdapter(src_path)
+        if src_path.is_dir():
+            return GitRepositoryAdapter(src_path)
+
+    if config.repository.url:
+        return GraphQLRepositoryAdapter(
+            endpoint_url=config.repository.url,
+            api_token=config.repository.token,
+            timeout_seconds=config.repository.timeout_seconds,
+            verify_ssl=config.repository.verify_ssl,
+        )
+
+    # Fallback to sample in-memory repository
+    return InMemoryRepositoryAdapter()
+
+
+@app.command("list")
+def list_applications(
+    source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to input JSON/YAML file")] = None,
+    config_path: Annotated[Optional[str], typer.Option("--config", "-c", help="Path to tecton.yaml")] = None,
+) -> None:
+    """List all applications in the portfolio with fit scores and lifecycle."""
+    config = TectonConfig.load(config_path)
+    repo = get_repository(source, config)
+    service = APMService(repo, config.time, config.redundancy)
+
+    applications = service.get_applications()
+    if not applications:
+        console.print("[yellow]No applications found in repository.[/yellow]")
+        return
+
+    table = Table(title=f"Application Portfolio ({len(applications)} systems)")
+    table.add_column("ID", style="dim", no_wrap=True)
+    table.add_column("Name", style="bold cyan", no_wrap=True)
+    table.add_column("Criticality", style="magenta")
+    table.add_column("Business Fit", justify="right")
+    table.add_column("Technical Fit", justify="right")
+    table.add_column("TIME", style="bold")
+    table.add_column("Phase", style="green")
+
+    for a in sorted(applications, key=lambda x: x.name):
+        b_str = f"{a.functional_suitability:.1f}" if a.functional_suitability else "-"
+        t_str = f"{a.technical_suitability:.1f}" if a.technical_suitability else "-"
+        phase_str = a.current_phase.value if a.current_phase else "-"
+
+        # Color-coded TIME
+        time_style = "white"
+        if a.time_classification == TimeQuadrant.INVEST:
+            time_style = "bold green"
+        elif a.time_classification == TimeQuadrant.TOLERATE:
+            time_style = "bold yellow"
+        elif a.time_classification == TimeQuadrant.MIGRATE:
+            time_style = "bold blue"
+        elif a.time_classification == TimeQuadrant.ELIMINATE:
+            time_style = "bold red"
+
+        table.add_row(
+            a.id[:8],
+            a.name,
+            a.business_criticality or "-",
+            b_str,
+            t_str,
+            f"[{time_style}]{a.time_classification.value}[/{time_style}]",
+            phase_str,
+        )
+
+    console.print(table)
+
+
+@app.command("analyze")
+def analyze_portfolio(
+    source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to input JSON/YAML file")] = None,
+    config_path: Annotated[Optional[str], typer.Option("--config", "-c", help="Path to tecton.yaml")] = None,
+    business_threshold: Annotated[Optional[float], typer.Option("--b-thresh", help="Business Fit threshold (1.0-5.0)")] = None,
+    technical_threshold: Annotated[Optional[float], typer.Option("--t-thresh", help="Technical Fit threshold (1.0-5.0)")] = None,
+) -> None:
+    """Run full deterministic APM evaluation: TIME classification, Redundancy, and Lifecycle."""
+    config = TectonConfig.load(config_path)
+    if business_threshold is not None:
+        config.time.business_threshold = business_threshold
+    if technical_threshold is not None:
+        config.time.technical_threshold = technical_threshold
+
+    repo = get_repository(source, config)
+    service = APMService(repo, config.time, config.redundancy)
+
+    with console.status("[bold green]Executing Tecton Portfolio Analytics..."):
+        result = service.analyze()
+
+    console.print("\n[bold]1. Wyniki Klasyfikacji Gartner TIME[/bold]")
+    summary_table = Table()
+    summary_table.add_column("Kwadrant", style="bold")
+    summary_table.add_column("Liczba Aplikacji", justify="right")
+    summary_table.add_column("Strategia Architektoniczna")
+
+    from collections import Counter
+    counts = Counter(result.time_classifications.values())
+    total = len(result.applications)
+
+    summary_table.add_row("[green]INVEST[/green]", str(counts.get(TimeQuadrant.INVEST, 0)), "Skaluj i inwestuj w rozwój")
+    summary_table.add_row("[yellow]TOLERATE[/yellow]", str(counts.get(TimeQuadrant.TOLERATE, 0)), "Utrzymuj, modernizuj architekturę")
+    summary_table.add_row("[blue]MIGRATE[/blue]", str(counts.get(TimeQuadrant.MIGRATE, 0)), "Konsoliduj, zmień przeznaczenie")
+    summary_table.add_row("[red]ELIMINATE[/red]", str(counts.get(TimeQuadrant.ELIMINATE, 0)), "Planuj wycofanie i wygaszenie")
+    summary_table.add_row("[dim]UNKNOWN[/dim]", str(counts.get(TimeQuadrant.UNKNOWN, 0)), "Brak pełnych ocen dopasowania")
+    console.print(summary_table)
+
+    if result.redundancy_clusters:
+        console.print("\n[bold]2. Wykryte Klastry Redundancji Funkcjonalnej[/bold]")
+        red_table = Table()
+        red_table.add_column("Klaster ID", style="dim")
+        red_table.add_column("Aplikacje", style="cyan")
+        red_table.add_column("Podobieństwo", justify="right", style="bold")
+        red_table.add_column("Rekomendacja")
+
+        for c in result.redundancy_clusters:
+            red_table.add_row(
+                c.cluster_id,
+                " <-> ".join(c.application_names),
+                f"{c.similarity_score*100:.1f}%",
+                c.recommendation,
+            )
+        console.print(red_table)
+    else:
+        console.print("\n[green]2. Brak wykrytych redundancji powyżej zadanego progu.[/green]")
+
+    if result.lifecycle_report.issues:
+        console.print("\n[bold red]3. Niezgodności Chronologiczne Cyklu Życia[/bold red]")
+        for issue in result.lifecycle_report.issues:
+            icon = "[red]🚨 BŁĄD[/red]" if issue.severity == "ERROR" else "[yellow]⚠️ OSTRZEŻENIE[/yellow]"
+            console.print(f"  {icon} [bold]{issue.application_name}[/bold]: {issue.message}")
+    else:
+        console.print("\n[green]3. Cykl życia: Wszystkie fazy wykazują poprawną chronologię.[/green]")
+
+    if result.patches_needed > 0:
+        console.print(f"\n[cyan]💡 Dostępne modyfikacje:[/cyan] {result.patches_needed} aplikacji wymaga aktualizacji kwadrantu TIME. Uruchom [bold]`tecton apm patch-time`[/bold].")
+
+
+@app.command("export-matrix")
+def export_matrix(
+    source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to input JSON/YAML file")] = None,
+    config_path: Annotated[Optional[str], typer.Option("--config", "-c", help="Path to tecton.yaml")] = None,
+    fmt: Annotated[str, typer.Option("--format", "-f", help="Export format: mermaid or markdown")] = "mermaid",
+    output: Annotated[Optional[str], typer.Option("--output", "-o", help="Output file path (default stdout)")] = None,
+) -> None:
+    """Export TIME model visual diagram (Mermaid quadrantChart) or full Markdown report."""
+    config = TectonConfig.load(config_path)
+    repo = get_repository(source, config)
+    service = APMService(repo, config.time, config.redundancy)
+
+    apps = service.get_applications()
+    if not apps:
+        console.print("[red]Brak aplikacji do wygenerowania raportu.[/red]")
+        return
+
+    if fmt.lower() == "mermaid":
+        content = MermaidExporter.to_time_quadrant_chart(apps)
+    else:
+        result = service.analyze()
+        content = MarkdownExporter.generate_apm_report(
+            applications=result.applications,
+            time_classifications=result.time_classifications,
+            redundancy_clusters=result.redundancy_clusters,
+            lifecycle_report=result.lifecycle_report,
+        )
+
+    if output:
+        out_path = Path(output)
+        out_path.write_text(content, encoding="utf-8")
+        console.print(f"[green]Raport zapisany pomyślnie w pliku:[/green] {out_path.resolve()}")
+    else:
+        console.print(content)
+
+
+@app.command("patch-time")
+def patch_time_classifications(
+    source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to input JSON/YAML file")] = None,
+    config_path: Annotated[Optional[str], typer.Option("--config", "-c", help="Path to tecton.yaml")] = None,
+    apply: Annotated[bool, typer.Option("--apply", help="Fizycznie zaaplikuj zmiany (domyślnie dry-run)")] = False,
+) -> None:
+    """Apply evaluated TIME classification quadrants to repository entities."""
+    config = TectonConfig.load(config_path)
+    repo = get_repository(source, config)
+    service = APMService(repo, config.time, config.redundancy)
+
+    is_dry_run = not apply
+    results = service.apply_time_patches(dry_run=is_dry_run)
+
+    mode_label = "[yellow][DRY-RUN - SYMULACJA][/yellow]" if is_dry_run else "[green][APPLIED - ZAPISANO][/green]"
+    console.print(f"{mode_label} Przetworzono {len(results)} łatek aktualizacji TIME.")
+
+    for res in results:
+        status_color = "yellow" if is_dry_run else "green"
+        console.print(f"  • Entity ID: {res['entity_id'][:8]} -> [{status_color}]{res.get('status', 'ok')}[/{status_color}] ({res.get('applied_count', 0)} zmian)")
+
+    if is_dry_run and results:
+        console.print("\n[dim]Aby zapisać zmiany w repozytorium, dodaj flagę `--apply`.[/dim]")
