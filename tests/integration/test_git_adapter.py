@@ -41,3 +41,36 @@ def test_git_adapter_apply_patches_dry_run():
     crm = adapter.get_application("sys-crm-core")
     assert crm is not None
     assert crm.time_classification == TimeQuadrant.INVEST
+
+
+def test_git_adapter_apply_patches_persist_success(tmp_path: Path):
+    manifest = tmp_path / "apps.yaml"
+    manifest.write_text("""
+systems:
+  - id: sys-app1
+    name: App One
+    time_classification: INVEST
+""", encoding="utf-8")
+
+    adapter = GitRepositoryAdapter(tmp_path)
+    patches = [{"op": "replace", "path": "/time_classification", "value": "MIGRATE"}]
+    result = adapter.apply_patches("sys-app1", patches, dry_run=False)
+
+    assert result["dry_run"] is False
+    assert result["applied_count"] == 1
+    assert "MIGRATE" in manifest.read_text(encoding="utf-8")
+
+
+def test_git_adapter_apply_patches_persist_failure(tmp_path: Path):
+    manifest = tmp_path / "apps.yaml"
+    manifest.write_text("""
+systems:
+  - id: sys-app1
+    name: App One
+""", encoding="utf-8")
+
+    adapter = GitRepositoryAdapter(tmp_path)
+    # Patching a non-existent entity with dry_run=False
+    patches = [{"op": "replace", "path": "/time_classification", "value": "MIGRATE"}]
+    with pytest.raises(Exception):
+        adapter.apply_patches("sys-unknown-id", patches, dry_run=False)

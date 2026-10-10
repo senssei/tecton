@@ -75,6 +75,7 @@ class GitRepositoryAdapter(InMemoryRepositoryAdapter):
 
             if updated:
                 file_path.write_text(yaml.dump(data, sort_keys=False), encoding="utf-8")
-        except Exception:
-            # Fallback gracefully if custom formatting cannot be cleanly overwritten
-            pass
+            else:
+                raise ValueError(f"Entity '{entity_id}' could not be matched in manifest '{file_path}'")
+        except Exception as e:
+            raise IOError(f"Failed to persist patch for entity '{entity_id}' into '{file_path}': {e}") from e

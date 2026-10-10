@@ -4,13 +4,15 @@ Exposes REST API endpoints for APM, BCM, TRM, Data Lineage, Graph Linting,
 and living Mermaid diagram export.
 """
 
+import os
 from pathlib import Path
 from typing import Any, Optional
-from fastapi import FastAPI, HTTPException, Query, Response
+from fastapi import FastAPI, Header, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
+from tecton import __version__
 from tecton.adapters.git_adapter import GitRepositoryAdapter
 from tecton.connectors import ArchiMateConnector, BackstageConnector
 from tecton.dsl.linter import GraphLinter
@@ -25,7 +27,7 @@ from tecton.services.trm_service import TRMService
 
 class HealthResponse(BaseModel):
     status: str = "ok"
-    version: str = "0.1.0"
+    version: str = __version__
     workspace_path: str
     files_scanned: int
     applications: int
@@ -39,7 +41,7 @@ class HealthResponse(BaseModel):
 
 
 class OverviewResponse(BaseModel):
-    version: str = "0.1.0"
+    version: str = __version__
     workspace_path: str
     quality_gate_valid: bool
     linter_errors: int
@@ -63,16 +65,17 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
     app = FastAPI(
         title="Tecton Architecture Intelligence API",
         description="Deterministic, offline-first Enterprise Architecture Intelligence Engine & Architecture-as-Code REST API.",
-        version="0.1.0",
+        version=__version__,
         docs_url="/docs",
         redoc_url="/redoc",
     )
 
-    # Enable CORS for developer portal and dashboard integration
+    # Enable CORS safely: allow_credentials must be False with wildcard origin
+    cors_origins = [o.strip() for o in os.environ.get("TECTON_CORS_ORIGINS", "*").split(",") if o.strip()]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
+        allow_origins=cors_origins,
+        allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -94,7 +97,7 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
         graph = adapter.graph
         return HealthResponse(
             status="ok",
-            version="0.1.0",
+            version=__version__,
             workspace_path=str(resolved_path),
             files_scanned=len(graph.files_parsed),
             applications=len(graph.systems),
@@ -116,7 +119,7 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
         trm_report = TRMService(graph).evaluate_technologies()
 
         return OverviewResponse(
-            version="0.1.0",
+            version=__version__,
             workspace_path=str(resolved_path),
             quality_gate_valid=linter_report.is_valid,
             linter_errors=linter_report.error_count,
@@ -134,8 +137,13 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
         )
 
     @app.post("/api/v1/reload", tags=["System"])
-    def reload_workspace() -> dict[str, Any]:
+    def reload_workspace(authorization: Optional[str] = Header(None)) -> dict[str, Any]:
         """Reload architecture DSL manifests from disk."""
+        expected_token = os.environ.get("TECTON_API_TOKEN")
+        if expected_token:
+            token = authorization.replace("Bearer ", "").strip() if authorization else ""
+            if token != expected_token:
+                raise HTTPException(status_code=401, detail="Unauthorized: invalid or missing Tecton API token")
         adapter.reload()
         return {
             "status": "reloaded",

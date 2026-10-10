@@ -344,6 +344,16 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
       diagrams: {}
     };
 
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
     async function init() {
       if (state.isStatic) {
         document.getElementById('mode-badge').innerText = 'Mode: Offline Static';
@@ -500,8 +510,8 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
             const isErr = iss.severity === 'ERROR';
             const color = isErr ? 'text-red-400 border-red-500/20 bg-red-500/5' : 'text-amber-400 border-amber-500/20 bg-amber-500/5';
             return `<div class="p-2.5 rounded border ${color} flex items-center justify-between">
-              <div><span class="font-bold">[${iss.rule}]</span> ${iss.message}</div>
-              <span class="text-xs text-slate-500">${iss.entity_id || ''}</span>
+              <div><span class="font-bold">[${escapeHtml(iss.rule)}]</span> ${escapeHtml(iss.message)}</div>
+              <span class="text-xs text-slate-500">${escapeHtml(iss.entity_id || '')}</span>
             </div>`;
           }).join('');
         } else {
@@ -552,12 +562,12 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
         const quadrant = app.time_classification || 'UNKNOWN';
         const qColor = quadrant === 'INVEST' ? 'text-emerald-400' : quadrant === 'TOLERATE' ? 'text-yellow-400' : quadrant === 'MIGRATE' ? 'text-blue-400' : 'text-red-400';
         return `<tr>
-          <td class="p-3 font-medium text-slate-200">${app.name} <span class="text-slate-500 text-[10px]">(${app.id})</span></td>
-          <td class="p-3 font-semibold ${qColor}">${quadrant}</td>
-          <td class="p-3 text-slate-400">${app.business_criticality || '-'}</td>
-          <td class="p-3 text-slate-400">${app.functional_suitability || '-'} / ${app.technical_suitability || '-'}</td>
-          <td class="p-3 text-slate-400">${(app.capabilities || []).join(', ') || '-'}</td>
-          <td class="p-3 text-slate-400">${(app.tags || []).join(', ') || '-'}</td>
+          <td class="p-3 font-medium text-slate-200">${escapeHtml(app.name)} <span class="text-slate-500 text-[10px]">(${escapeHtml(app.id)})</span></td>
+          <td class="p-3 font-semibold ${qColor}">${escapeHtml(quadrant)}</td>
+          <td class="p-3 text-slate-400">${escapeHtml(app.business_criticality || '-')}</td>
+          <td class="p-3 text-slate-400">${escapeHtml(app.functional_suitability || '-')} / ${escapeHtml(app.technical_suitability || '-')}</td>
+          <td class="p-3 text-slate-400">${(app.capabilities || []).map(escapeHtml).join(', ') || '-'}</td>
+          <td class="p-3 text-slate-400">${(app.tags || []).map(escapeHtml).join(', ') || '-'}</td>
         </tr>`;
       }).join('');
     }
@@ -579,11 +589,11 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
         const count = cov ? cov.realizing_systems_count : 0;
         const status = count === 0 ? '<span class="text-red-400 font-bold">UNMAPPED GAP</span>' : `<span class="text-emerald-400">${count} system(s)</span>`;
         return `<tr>
-          <td class="p-3 font-medium text-slate-200">${cap.name} <span class="text-slate-500 text-[10px]">(${cap.id})</span></td>
-          <td class="p-3 text-slate-400">${cap.level || 'L1'}</td>
+          <td class="p-3 font-medium text-slate-200">${escapeHtml(cap.name)} <span class="text-slate-500 text-[10px]">(${escapeHtml(cap.id)})</span></td>
+          <td class="p-3 text-slate-400">${escapeHtml(cap.level || 'L1')}</td>
           <td class="p-3">${status}</td>
-          <td class="p-3 text-slate-400">${cov ? cov.realizing_systems.join(', ') : '-'}</td>
-          <td class="p-3 text-slate-400">${cov ? cov.health : '-'}</td>
+          <td class="p-3 text-slate-400">${cov && cov.realizing_systems ? cov.realizing_systems.map(escapeHtml).join(', ') : '-'}</td>
+          <td class="p-3 text-slate-400">${escapeHtml(cov ? cov.health : '-')}</td>
         </tr>`;
       }).join('');
     }
@@ -591,7 +601,7 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
     function populateTechSelect() {
       const select = document.getElementById('trm-tech-select');
       select.innerHTML = '<option value="">-- Choose Technology --</option>' +
-        state.technologies.map(t => `<option value="${t.id}">${t.name} (${t.status})</option>`).join('');
+        state.technologies.map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)} (${escapeHtml(t.status)})</option>`).join('');
     }
 
     async function calculateSelectedBlastRadius() {
@@ -619,21 +629,21 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
       resContainer.innerHTML = `
         <div class="space-y-3">
           <div class="flex items-center justify-between">
-            <span class="font-bold text-base text-indigo-400">${report.technology_name}</span>
-            <span class="text-xs px-2 py-0.5 rounded bg-red-500/20 text-red-400 font-semibold">Risk Score: ${report.risk_score || 'N/A'}</span>
+            <span class="font-bold text-base text-indigo-400">${escapeHtml(report.technology_name)}</span>
+            <span class="text-xs px-2 py-0.5 rounded bg-red-500/20 text-red-400 font-semibold">Risk Score: ${escapeHtml(report.risk_score || 'N/A')}</span>
           </div>
-          <p class="text-xs text-slate-400">${report.summary}</p>
+          <p class="text-xs text-slate-400">${escapeHtml(report.summary)}</p>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs pt-2 border-t border-slate-800">
-            <div><span class="text-slate-500 block">Direct Systems:</span> <span class="text-slate-200">${(report.directly_affected_system_names || []).join(', ') || 'None'}</span></div>
-            <div><span class="text-slate-500 block">Cascading Systems:</span> <span class="text-slate-200">${(report.cascading_system_names || []).join(', ') || 'None'}</span></div>
-            <div><span class="text-slate-500 block">Compromised Capabilities:</span> <span class="text-slate-200">${(report.compromised_capability_ids || []).join(', ') || 'None'}</span></div>
+            <div><span class="text-slate-500 block">Direct Systems:</span> <span class="text-slate-200">${(report.directly_affected_system_names || []).map(escapeHtml).join(', ') || 'None'}</span></div>
+            <div><span class="text-slate-500 block">Cascading Systems:</span> <span class="text-slate-200">${(report.cascading_system_names || []).map(escapeHtml).join(', ') || 'None'}</span></div>
+            <div><span class="text-slate-500 block">Compromised Capabilities:</span> <span class="text-slate-200">${(report.compromised_capability_ids || []).map(escapeHtml).join(', ') || 'None'}</span></div>
           </div>
         </div>`;
     }
 
     function populateLineageSelect() {
       const select = document.getElementById('lineage-data-select');
-      select.innerHTML = state.dataObjects.map(d => `<option value="${d.id}">${d.name} (${d.classification})</option>`).join('');
+      select.innerHTML = state.dataObjects.map(d => `<option value="${escapeHtml(d.id)}">${escapeHtml(d.name)} (${escapeHtml(d.classification)})</option>`).join('');
       if (state.dataObjects.length > 0) {
         renderSelectedLineage();
       }
@@ -661,16 +671,16 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
       const doList = document.getElementById('data-objects-list');
       doList.innerHTML = state.dataObjects.map(d => `
         <div class="p-2.5 rounded bg-slate-950 border border-slate-800 flex justify-between items-center">
-          <div><span class="text-slate-200 font-semibold">${d.name}</span> <span class="text-slate-500">(${d.id})</span></div>
-          <span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-pink-400 font-bold">${d.classification}</span>
+          <div><span class="text-slate-200 font-semibold">${escapeHtml(d.name)}</span> <span class="text-slate-500">(${escapeHtml(d.id)})</span></div>
+          <span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-pink-400 font-bold">${escapeHtml(d.classification)}</span>
         </div>
       `).join('');
 
       const ifList = document.getElementById('interfaces-list');
       ifList.innerHTML = state.interfaces.map(i => `
         <div class="p-2.5 rounded bg-slate-950 border border-slate-800 flex justify-between items-center">
-          <div><span class="text-slate-200 font-semibold">${i.name}</span> <span class="text-slate-500">(${i.provider_system_id})</span></div>
-          <span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-amber-400 font-bold">${i.protocol}</span>
+          <div><span class="text-slate-200 font-semibold">${escapeHtml(i.name)}</span> <span class="text-slate-500">(${escapeHtml(i.provider_system_id)})</span></div>
+          <span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-amber-400 font-bold">${escapeHtml(i.protocol)}</span>
         </div>
       `).join('');
     }
@@ -678,7 +688,7 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
     function populateCompareSelects() {
       const fromSel = document.getElementById('compare-from-select');
       const toSel = document.getElementById('compare-to-select');
-      const opts = state.plateaus.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+      const opts = state.plateaus.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`).join('');
       fromSel.innerHTML = opts;
       toSel.innerHTML = opts;
       if (state.plateaus.length > 1) {
@@ -695,7 +705,7 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
 
       let comp;
       if (!state.isStatic) {
-        comp = await fetch(`/api/v1/roadmap/compare?from_plateau=${fromP}&to_plateau=${toP}`).then(r => r.json());
+        comp = await fetch(`/api/v1/roadmap/compare?from_plateau=${encodeURIComponent(fromP)}&to_plateau=${encodeURIComponent(toP)}`).then(r => r.json());
       } else {
         comp = (state.scenarioComparisons || {})[`${fromP}_${toP}`] || {
           net_capability_gain: 0,
@@ -710,16 +720,16 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
       container.innerHTML = `
         <div class="space-y-3">
           <div class="flex items-center justify-between">
-            <span class="font-bold text-sm text-indigo-400">${fromP} &rarr; ${toP}</span>
+            <span class="font-bold text-sm text-indigo-400">${escapeHtml(fromP)} &rarr; ${escapeHtml(toP)}</span>
             <div class="space-x-2">
-              <span class="px-2 py-0.5 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded font-semibold">Net Cap Gain: ${comp.net_capability_gain}</span>
-              <span class="px-2 py-0.5 text-xs bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded font-semibold">Tech Debt Retired: ${comp.tech_debt_reduction_count}</span>
+              <span class="px-2 py-0.5 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded font-semibold">Net Cap Gain: ${escapeHtml(comp.net_capability_gain)}</span>
+              <span class="px-2 py-0.5 text-xs bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded font-semibold">Tech Debt Retired: ${escapeHtml(comp.tech_debt_reduction_count)}</span>
             </div>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs pt-2 border-t border-slate-800">
-            <div><span class="text-emerald-400 block">+ Added Systems:</span> <span class="text-slate-300">${(comp.added_system_ids || []).join(', ') || 'None'}</span></div>
-            <div><span class="text-red-400 block">- Retired Systems:</span> <span class="text-slate-300">${(comp.decommissioned_system_ids || []).join(', ') || 'None'}</span></div>
-            <div><span class="text-cyan-400 block">Retained Systems:</span> <span class="text-slate-300">${(comp.retained_system_ids || []).join(', ') || 'None'}</span></div>
+            <div><span class="text-emerald-400 block">+ Added Systems:</span> <span class="text-slate-300">${(comp.added_system_ids || []).map(escapeHtml).join(', ') || 'None'}</span></div>
+            <div><span class="text-red-400 block">- Retired Systems:</span> <span class="text-slate-300">${(comp.decommissioned_system_ids || []).map(escapeHtml).join(', ') || 'None'}</span></div>
+            <div><span class="text-cyan-400 block">Retained Systems:</span> <span class="text-slate-300">${(comp.retained_system_ids || []).map(escapeHtml).join(', ') || 'None'}</span></div>
           </div>
         </div>`;
     }

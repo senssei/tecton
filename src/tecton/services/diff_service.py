@@ -1,6 +1,8 @@
 """Architecture Diff Service orchestrating semantic graph comparisons across Git & folders."""
 
+import io
 import subprocess
+import tarfile
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -71,20 +73,50 @@ class DiffService:
             )
 
     def _extract_git_tree(self, ref: str, dest_dir: Path, repo_root: Path) -> None:
-        """Extract a Git tree at a given ref into a target directory."""
+        """Extract a Git tree at a given ref into a target directory securely without shell execution."""
+        # Validate that ref exists and resolves cleanly to a commit or tree object
         try:
-            # git archive <ref> | tar -x -C <dest_dir>
-            cmd = f"git archive {ref} | tar -x -C {dest_dir}"
-            subprocess.run(
-                cmd,
-                shell=True,
-                check=True,
+            rev_parse = subprocess.run(
+                ["git", "rev-parse", "--verify", f"{ref}^{{commit}}"],
                 cwd=repo_root,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if rev_parse.returncode != 0:
+                rev_parse = subprocess.run(
+                    ["git", "rev-parse", "--verify", ref],
+                    cwd=repo_root,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                if rev_parse.returncode != 0:
+                    raise ValueError(f"Invalid Git reference '{ref}': {rev_parse.stderr.strip()}")
+        except (subprocess.SubprocessError, OSError) as e:
+            raise ValueError(f"Failed to verify Git ref '{ref}': {e}") from e
+
+        # Archive ref safely without shell
+        try:
+            proc = subprocess.run(
+                ["git", "archive", "--format=tar", ref],
+                cwd=repo_root,
+                capture_output=True,
+                check=True,
             )
         except subprocess.CalledProcessError as e:
-            raise ValueError(f"Failed to extract Git ref '{ref}': {e.stderr.decode()}") from e
+            raise ValueError(f"Failed to archive Git ref '{ref}': {e.stderr.decode(errors='replace')}") from e
+
+        # Safely extract in Python, guarding against directory traversal
+        try:
+            tar_stream = io.BytesIO(proc.stdout)
+            with tarfile.open(fileobj=tar_stream, mode="r:") as tar:
+                if hasattr(tarfile, "data_filter"):
+                    tar.extractall(path=dest_dir, filter="data")
+                else:
+                    tar.extractall(path=dest_dir)
+        except Exception as e:
+            raise ValueError(f"Failed to extract tar archive for Git ref '{ref}': {e}") from e
 
     @staticmethod
     def to_pr_comment_markdown(report: ArchitectureDiffReport) -> str:

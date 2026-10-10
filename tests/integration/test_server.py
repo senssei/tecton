@@ -259,4 +259,29 @@ def test_server_portal_endpoints(client: TestClient):
     assert "Executive Overview" in res_portal.text
 
 
+def test_server_cors_headers(client: TestClient):
+    response = client.get("/api/v1/health", headers={"Origin": "https://example.com"})
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == "*"
+    # Starlette forbids credentials with wildcard origin:
+    assert response.headers.get("access-control-allow-credentials") is None
+
+
+def test_server_reload_with_token(client: TestClient, monkeypatch):
+    monkeypatch.setenv("TECTON_API_TOKEN", "secure-token-xyz")
+
+    # Unauthorized request without token
+    res_unauth = client.post("/api/v1/reload")
+    assert res_unauth.status_code == 401
+
+    # Unauthorized request with wrong token
+    res_bad = client.post("/api/v1/reload", headers={"Authorization": "Bearer wrong-token"})
+    assert res_bad.status_code == 401
+
+    # Authorized request with valid token
+    res_auth = client.post("/api/v1/reload", headers={"Authorization": "Bearer secure-token-xyz"})
+    assert res_auth.status_code == 200
+    assert res_auth.json()["status"] == "reloaded"
+
+
 

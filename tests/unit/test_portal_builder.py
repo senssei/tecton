@@ -61,3 +61,19 @@ systems:
     assert out_file.name == "index.html"
     content = out_file.read_text(encoding="utf-8")
     assert "Core System" in content
+
+
+def test_portal_builder_xss_sanitization():
+    yaml_content = """
+systems:
+  - id: sys-evil
+    name: "Malicious System </script><script>alert('xss')</script>"
+"""
+    graph = C4EAMParser().parse_content(yaml_content)
+    html = PortalBuilder.build_static_portal_html(graph)
+
+    # Must NOT have raw unescaped </script> inside the data JSON payload
+    assert "</script><script>alert('xss')</script>" not in html
+    assert "\\u003c/script\\u003e\\u003cscript\\u003ealert('xss')\\u003c/script\\u003e" in html
+    # Must include escapeHtml utility function
+    assert "function escapeHtml(str)" in html

@@ -192,7 +192,13 @@ class PortalBuilder:
             "archi_native_xml": ArchiMateConnector.export_archi_xml(graph),
         }
 
-        serialized_data = json.dumps(payload, default=str)
+        # Sanitize serialized JSON against script injection / breakout (e.g., </script>)
+        serialized_data = (
+            json.dumps(payload, default=str)
+            .replace("<", "\\u003c")
+            .replace(">", "\\u003e")
+            .replace("&", "\\u0026")
+        )
         return PORTAL_HTML_TEMPLATE.replace("__DATA_PAYLOAD__", serialized_data)
 
     @classmethod
