@@ -119,6 +119,22 @@ tecton trm blast-radius tech-legacy-solaris --source examples/c4_eam_workspace
 tecton trm export-radar --source examples/c4_eam_workspace
 ```
 
+### Semantic Architecture Diff & GitOps Review Gate
+Compare architecture states between Git branches, commit revisions, or directories:
+```bash
+# Compare two architecture workspaces or folders
+tecton diff examples/c4_eam_workspace examples/dogfood/tecton_c4_workspace
+
+# Compare Git revisions (e.g. main vs current HEAD or feature branch)
+tecton diff main HEAD
+
+# Generate an executive GitHub / GitLab Pull Request review comment
+tecton diff main HEAD --format pr-comment -o pr_review.md
+
+# Enforce pre-merge gate (exit code 1 if breaking regressions or unmapped capability gaps are introduced)
+tecton diff main HEAD --fail-on-risk
+```
+
 ---
 
 ## 🐶 Dogfooding Tecton
