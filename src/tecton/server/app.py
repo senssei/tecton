@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from tecton.adapters.git_adapter import GitRepositoryAdapter
+from tecton.connectors import ArchiMateConnector, BackstageConnector
 from tecton.dsl.linter import GraphLinter
 from tecton.exporters.mermaid import MermaidExporter
 from tecton.services.apm_service import APMService
@@ -471,5 +472,32 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
             "format": "mermaid",
             "content": chart,
         }
+
+    # --- Open EA Ecosystem Connectors Endpoints ---
+    @app.get("/api/v1/export/backstage", tags=["Connectors"])
+    def export_backstage_catalog() -> dict[str, Any]:
+        """Export architecture graph to Spotify Backstage Software Catalog entities."""
+        graph = adapter.graph
+        yaml_content = BackstageConnector.export_yaml(graph)
+        entities = BackstageConnector.export_catalog(graph)
+        return {
+            "format": "yaml",
+            "entities_count": len(entities),
+            "content": yaml_content,
+        }
+
+    @app.get("/api/v1/export/archimate", tags=["Connectors"])
+    def export_archimate_model(
+        format: str = Query("xml", description="Response format: xml (raw) or json (envelope)"),
+    ) -> Any:
+        """Export architecture graph to The Open Group ArchiMate Model Exchange XML."""
+        graph = adapter.graph
+        xml_content = ArchiMateConnector.export_xml(graph)
+        if format == "json":
+            return {
+                "format": "xml",
+                "content": xml_content,
+            }
+        return Response(content=xml_content, media_type="application/xml")
 
     return app

@@ -180,6 +180,22 @@ tecton serve --source examples/c4_eam_workspace --host 0.0.0.0 --port 8080
 # http://127.0.0.1:8000/docs
 ```
 
+### Open EA Ecosystem Connectors (`tecton export` & `tecton import`)
+Seamless bi-directional integration with Spotify Backstage and standard Open Group ArchiMate tooling:
+```bash
+# Export C4 EAM architecture graph to Spotify Backstage Software Catalog YAML
+tecton export backstage --source examples/c4_eam_workspace -o catalog-info.yaml
+
+# Export architecture graph to The Open Group ArchiMate Model Exchange XML (ArchiMate 3.0/3.1)
+tecton export archimate --source examples/c4_eam_workspace -o model.xml
+
+# Import Spotify Backstage catalog into Tecton Architecture-as-Code manifests
+tecton import backstage catalog-info.yaml -o imported_workspace/
+
+# Import The Open Group ArchiMate Model Exchange XML into Tecton manifests
+tecton import archimate model.xml -o imported_workspace/
+```
+
 ---
 
 ## 🐶 Dogfooding Tecton

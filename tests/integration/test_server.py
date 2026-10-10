@@ -208,3 +208,27 @@ def test_server_diagram_endpoints(client: TestClient):
     res_unknown = client.get("/api/v1/diagrams/non-existent-chart")
     assert res_unknown.status_code == 400
 
+
+def test_server_connector_export_endpoints(client: TestClient):
+    # 1. Backstage
+    res_bs = client.get("/api/v1/export/backstage")
+    assert res_bs.status_code == 200
+    data_bs = res_bs.json()
+    assert data_bs["format"] == "yaml"
+    assert data_bs["entities_count"] >= 10
+    assert "backstage.io/v1alpha1" in data_bs["content"]
+
+    # 2. ArchiMate XML raw
+    res_arch = client.get("/api/v1/export/archimate")
+    assert res_arch.status_code == 200
+    assert "application/xml" in res_arch.headers["content-type"]
+    assert "http://www.opengroup.org/xsd/archimate/3.0/" in res_arch.text
+
+    # 3. ArchiMate JSON envelope
+    res_arch_json = client.get("/api/v1/export/archimate?format=json")
+    assert res_arch_json.status_code == 200
+    data_arch = res_arch_json.json()
+    assert data_arch["format"] == "xml"
+    assert "Tecton Architecture Model" in data_arch["content"]
+
+
