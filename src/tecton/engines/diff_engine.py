@@ -8,7 +8,6 @@ from enum import Enum
 from typing import Any
 from pydantic import BaseModel, Field
 
-from tecton.dsl.linter import GraphLinter, LintIssue, LintSeverity
 from tecton.dsl.parser import CompiledGraph
 from tecton.engines.bcm_engine import BCMEngine
 
@@ -67,6 +66,7 @@ class DiffEngine:
     """Deterministic comparison engine computing architectural graph diffs."""
 
     def __init__(self) -> None:
+        from tecton.dsl.linter import GraphLinter
         self.linter = GraphLinter()
         self.bcm_engine = BCMEngine()
 
@@ -298,7 +298,7 @@ class DiffEngine:
         base_report = self.linter.lint(base)
         head_report = self.linter.lint(head)
 
-        def issue_key(issue: LintIssue) -> tuple[str, str, str]:
+        def issue_key(issue: Any) -> tuple[str, str, str]:
             return (issue.rule, str(issue.entity_id), issue.message)
 
         base_keys = {issue_key(i) for i in base_report.issues}

@@ -1,0 +1,168 @@
+"""Integration tests for Tecton Headless Architecture Intelligence REST API server."""
+
+from pathlib import Path
+import pytest
+from fastapi.testclient import TestClient
+
+from tecton.server.app import create_app
+
+
+@pytest.fixture
+def client() -> TestClient:
+    workspace = Path(__file__).parents[2] / "examples" / "c4_eam_workspace"
+    app = create_app(workspace)
+    return TestClient(app)
+
+
+def test_server_health(client: TestClient):
+    response = client.get("/api/v1/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data["version"] == "0.1.0"
+    assert data["applications"] == 3
+    assert data["capabilities"] == 6
+    assert data["technologies"] == 4
+    assert data["data_objects"] == 3
+    assert data["interfaces"] == 2
+
+
+def test_server_overview(client: TestClient):
+    response = client.get("/api/v1/overview")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["version"] == "0.1.0"
+    assert data["total_applications"] == 3
+    assert data["total_capabilities"] == 6
+    assert data["total_technologies"] == 4
+    assert data["technologies_past_eol"] == 1
+    assert data["quality_gate_valid"] is True
+
+
+def test_server_reload(client: TestClient):
+    response = client.post("/api/v1/reload")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "reloaded"
+    assert data["applications"] == 3
+
+
+def test_server_validate(client: TestClient):
+    response = client.get("/api/v1/validate")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["valid"] is True
+    assert data["error_count"] == 0
+    assert data["warning_count"] >= 1
+
+
+def test_server_apm_endpoints(client: TestClient):
+    # 1. Applications
+    response = client.get("/api/v1/apm/applications")
+    assert response.status_code == 200
+    apps = response.json()
+    assert len(apps) == 3
+    app_ids = {a["id"] for a in apps}
+    assert "sys-crm-core" in app_ids
+    assert "sys-legacy-billing" in app_ids
+
+    # 2. Analysis
+    res_analysis = client.get("/api/v1/apm/analysis")
+    assert res_analysis.status_code == 200
+    analysis = res_analysis.json()
+    assert analysis["total_applications"] == 3
+    assert "INVEST" in analysis["time_distribution"]
+    assert "ELIMINATE" in analysis["time_distribution"]
+
+
+def test_server_bcm_endpoints(client: TestClient):
+    # 1. Capabilities
+    res_caps = client.get("/api/v1/bcm/capabilities")
+    assert res_caps.status_code == 200
+    caps = res_caps.json()
+    assert len(caps) == 6
+
+    # 2. Coverage
+    res_cov = client.get("/api/v1/bcm/coverage")
+    assert res_cov.status_code == 200
+    cov = res_cov.json()
+    assert cov["total_capabilities"] == 6
+    assert "cap-order-capture" in cov["coverages"]
+
+
+def test_server_trm_endpoints(client: TestClient):
+    # 1. Technologies
+    res_techs = client.get("/api/v1/trm/technologies")
+    assert res_techs.status_code == 200
+    techs = res_techs.json()
+    assert techs["total_technologies"] == 4
+    assert techs["approved_count"] == 3
+    assert techs["deprecated_count"] == 1
+
+    # 2. Blast radius valid
+    res_br = client.get("/api/v1/trm/blast-radius/tech-legacy-solaris")
+    assert res_br.status_code == 200
+    br = res_br.json()
+    assert br["technology_id"] == "tech-legacy-solaris"
+    assert br["status"] == "deprecated"
+    assert len(br["directly_affected_system_ids"]) == 1
+
+    # 3. Blast radius 404
+    res_br_404 = client.get("/api/v1/trm/blast-radius/unknown-tech")
+    assert res_br_404.status_code == 404
+
+
+def test_server_data_lineage_endpoints(client: TestClient):
+    # 1. Data objects
+    res_do = client.get("/api/v1/data/objects")
+    assert res_do.status_code == 200
+    objects = res_do.json()
+    assert len(objects) == 3
+
+    # 2. Interfaces
+    res_if = client.get("/api/v1/data/interfaces")
+    assert res_if.status_code == 200
+    interfaces = res_if.json()
+    assert len(interfaces) == 2
+
+    # 3. Lineage valid
+    res_lin = client.get("/api/v1/data/lineage/do-customer-profile")
+    assert res_lin.status_code == 200
+    lineage = res_lin.json()
+    assert lineage["data_object_id"] == "do-customer-profile"
+    assert lineage["classification"] == "RESTRICTED_PII"
+    assert lineage["risk_count"] == 3
+
+    # 4. Lineage 404
+    res_lin_404 = client.get("/api/v1/data/lineage/non-existent-do")
+    assert res_lin_404.status_code == 404
+
+
+def test_server_diagram_endpoints(client: TestClient):
+    # 1. TIME matrix
+    res_time = client.get("/api/v1/diagrams/time-matrix")
+    assert res_time.status_code == 200
+    assert "quadrantChart" in res_time.json()["content"]
+
+    # 2. Capability heatmap
+    res_bcm = client.get("/api/v1/diagrams/capability-heatmap")
+    assert res_bcm.status_code == 200
+    assert "flowchart TD" in res_bcm.json()["content"]
+
+    # 3. Tech radar
+    res_trm = client.get("/api/v1/diagrams/tech-radar")
+    assert res_trm.status_code == 200
+    assert "flowchart LR" in res_trm.json()["content"]
+
+    # 4. Data lineage with data_id
+    res_lin = client.get("/api/v1/diagrams/data-lineage?data_id=do-customer-profile")
+    assert res_lin.status_code == 200
+    assert "flowchart LR" in res_lin.json()["content"]
+
+    # 5. Data lineage missing data_id -> 400
+    res_bad = client.get("/api/v1/diagrams/data-lineage")
+    assert res_bad.status_code == 400
+
+    # 6. Unknown chart type -> 400
+    res_unknown = client.get("/api/v1/diagrams/non-existent-chart")
+    assert res_unknown.status_code == 400

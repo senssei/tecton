@@ -151,6 +151,19 @@ tecton data lineage do-customer-profile --source examples/c4_eam_workspace
 tecton data export-lineage do-customer-profile --source examples/c4_eam_workspace
 ```
 
+### Headless Architecture Intelligence Server (`tecton serve`)
+Serve real-time architecture intelligence, quality gates, and living diagram generation via high-performance REST API:
+```bash
+# Launch Tecton API server (auto-binds to 127.0.0.1:8000 by default)
+tecton serve --source examples/c4_eam_workspace
+
+# Launch with custom host and port
+tecton serve --source examples/c4_eam_workspace --host 0.0.0.0 --port 8080
+
+# Interactive OpenAPI / Swagger UI documentation is available at:
+# http://127.0.0.1:8000/docs
+```
+
 ---
 
 ## 🐶 Dogfooding Tecton
