@@ -36,6 +36,9 @@ class BackstageConnector:
                         "title": cap.name,
                         "description": cap.description or f"Enterprise capability: {cap.name}",
                         "tags": ["capability", f"level-{cap.level or 'L1'}"],
+                        "annotations": {
+                            "tecton.io/domain-id": cap.id,
+                        },
                     },
                     "spec": {
                         "owner": "enterprise-architecture",
@@ -57,6 +60,9 @@ class BackstageConnector:
                     "title": sys.name,
                     "description": sys.description or f"System: {sys.name}",
                     "tags": [t.lower() for t in sys.tags] + [sys.time_classification.value.lower()],
+                    "annotations": {
+                        "tecton.io/domain-id": sys.id,
+                    },
                 },
                 "spec": {
                     "owner": sys.metadata.get("owner", "architecture-team"),
@@ -80,6 +86,9 @@ class BackstageConnector:
                             "title": cnt.name,
                             "description": cnt.description or f"Container component {cnt.name}",
                             "tags": ["container", cnt.technology.lower()] if cnt.technology else ["container"],
+                            "annotations": {
+                                "tecton.io/domain-id": cnt.id,
+                            },
                         },
                         "spec": {
                             "type": "service",
@@ -99,6 +108,9 @@ class BackstageConnector:
                         "title": f"{sys.name} Service",
                         "description": sys.description or f"Core service for {sys.name}",
                         "tags": ["service", sys.time_classification.value.lower()],
+                        "annotations": {
+                            "tecton.io/domain-id": sys.id,
+                        },
                     },
                     "spec": {
                         "type": "service",
@@ -138,6 +150,9 @@ class BackstageConnector:
                     "title": iface.name,
                     "description": iface.description or f"Interface contract: {iface.name}",
                     "tags": ["interface", iface.protocol.lower()],
+                    "annotations": {
+                        "tecton.io/domain-id": iface.id,
+                    },
                 },
                 "spec": {
                     "type": proto_type,
@@ -159,6 +174,9 @@ class BackstageConnector:
                     "title": tech.name,
                     "description": tech.description or f"Technology radar asset: {tech.name}",
                     "tags": ["technology", tech.status.value],
+                    "annotations": {
+                        "tecton.io/domain-id": tech.id,
+                    },
                 },
                 "spec": {
                     "type": tech.category or "infrastructure",
@@ -192,6 +210,15 @@ class BackstageConnector:
             "relationships": [],
         }
 
+        name_to_domain: dict[str, str] = {}
+        for doc in docs:
+            if isinstance(doc, dict):
+                meta = doc.get("metadata", {})
+                n = meta.get("name", "")
+                raw = meta.get("annotations", {}).get("tecton.io/domain-id") or n
+                if n:
+                    name_to_domain[n] = raw
+
         for doc in docs:
             if not isinstance(doc, dict):
                 continue
@@ -199,6 +226,7 @@ class BackstageConnector:
             metadata = doc.get("metadata", {})
             spec = doc.get("spec", {})
             name = metadata.get("name", "")
+            domain_id = metadata.get("annotations", {}).get("tecton.io/domain-id") or name
             title = metadata.get("title", name)
             description = metadata.get("description", "")
 
@@ -207,48 +235,53 @@ class BackstageConnector:
 
             if kind == "domain":
                 manifest["capabilities"].append({
-                    "id": name,
+                    "id": domain_id,
                     "name": title,
                     "level": "L1",
                     "description": description,
                 })
             elif kind == "system":
+                domain_ref = spec.get("domain")
+                mapped_domain = name_to_domain.get(domain_ref, domain_ref) if domain_ref else None
                 manifest["systems"].append({
-                    "id": name,
+                    "id": domain_id,
                     "name": title,
                     "description": description,
                     "tags": metadata.get("tags", []),
-                    "capabilities": [spec["domain"]] if "domain" in spec else [],
+                    "capabilities": [mapped_domain] if mapped_domain else [],
                 })
             elif kind == "component":
                 comp_type = spec.get("type", "service")
                 system_ref = spec.get("system")
-                if system_ref:
+                mapped_sys = name_to_domain.get(system_ref, system_ref) if system_ref else None
+                if mapped_sys:
                     manifest["containers"].append({
-                        "id": name,
+                        "id": domain_id,
                         "name": title,
-                        "system_id": system_ref,
+                        "system_id": mapped_sys,
                         "technology": comp_type,
                         "description": description,
                     })
                 else:
                     manifest["systems"].append({
-                        "id": name,
+                        "id": domain_id,
                         "name": title,
                         "description": description,
                         "tags": metadata.get("tags", []),
                     })
             elif kind == "api":
+                provider_ref = spec.get("system") or spec.get("owner") or "unknown"
+                mapped_provider = name_to_domain.get(provider_ref, provider_ref)
                 manifest["interfaces"].append({
-                    "id": name,
+                    "id": domain_id,
                     "name": title,
                     "protocol": spec.get("type", "REST").upper(),
-                    "provider_system_id": spec.get("system") or spec.get("owner") or "unknown",
+                    "provider_system_id": mapped_provider,
                     "description": description,
                 })
             elif kind == "resource":
                 manifest["technologies"].append({
-                    "id": name,
+                    "id": domain_id,
                     "name": title,
                     "category": spec.get("type", "infrastructure"),
                     "description": description,

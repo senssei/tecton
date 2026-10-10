@@ -223,3 +223,88 @@ def test_archimate_connector_import_archi_native_xml():
     assert len(manifest["systems"]) == 1
     assert manifest["systems"][0]["id"] == "sys-portal"
     assert manifest["systems"][0]["capabilities"] == ["cap-cust"]
+
+
+def test_archimate_connector_roundtrip_id_stability():
+    yaml_content = """
+capabilities:
+  - id: cap-payment-processing
+    name: Payment Processing
+    level: L1
+systems:
+  - id: sys-billing-core
+    name: Core Billing Engine
+    capabilities: [cap-payment-processing]
+  - id: sys-order-processor
+    name: Order Processing Service
+relationships:
+  - source_id: sys-order-processor
+    target_id: sys-billing-core
+    description: Transmits invoice
+"""
+    graph = C4EAMParser().parse_content(yaml_content)
+    xml_out = ArchiMateConnector.export_xml(graph)
+
+    imported = ArchiMateConnector.import_xml(xml_out)
+
+    sys_ids = {s["id"] for s in imported["systems"]}
+    assert "sys-billing-core" in sys_ids
+    assert "sys-order-processor" in sys_ids
+
+    cap_ids = {c["id"] for c in imported["capabilities"]}
+    assert "cap-payment-processing" in cap_ids
+
+    # Verify flow relationship matches original domain IDs
+    assert len(imported["relationships"]) == 1
+    rel = imported["relationships"][0]
+    assert rel["source_id"] == "sys-order-processor"
+    assert rel["target_id"] == "sys-billing-core"
+
+
+def test_archi_native_roundtrip_id_stability():
+    yaml_content = """
+capabilities:
+  - id: cap-warehouse-ops
+    name: Warehouse Operations
+systems:
+  - id: sys-inventory-mgmt
+    name: Inventory Management
+    capabilities: [cap-warehouse-ops]
+  - id: sys-shipping-router
+    name: Shipping Router
+relationships:
+  - source_id: sys-inventory-mgmt
+    target_id: sys-shipping-router
+    description: Routes shipment
+"""
+    graph = C4EAMParser().parse_content(yaml_content)
+    archi_out = ArchiMateConnector.export_archi_xml(graph)
+
+    imported = ArchiMateConnector.import_xml(archi_out)
+
+    sys_ids = {s["id"] for s in imported["systems"]}
+    assert "sys-inventory-mgmt" in sys_ids
+    assert "sys-shipping-router" in sys_ids
+
+    assert len(imported["relationships"]) == 1
+    rel = imported["relationships"][0]
+    assert rel["source_id"] == "sys-inventory-mgmt"
+    assert rel["target_id"] == "sys-shipping-router"
+
+
+def test_backstage_connector_roundtrip_id_stability():
+    yaml_content = """
+capabilities:
+  - id: cap-customer-support
+    name: Customer Support
+systems:
+  - id: sys-crm-central
+    name: Central CRM
+    capabilities: [cap-customer-support]
+"""
+    graph = C4EAMParser().parse_content(yaml_content)
+    backstage_out = BackstageConnector.export_yaml(graph)
+
+    imported = BackstageConnector.import_catalog(backstage_out)
+    assert any(s["id"] == "sys-crm-central" for s in imported["systems"])
+    assert any(c["id"] == "cap-customer-support" for c in imported["capabilities"])

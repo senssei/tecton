@@ -27,6 +27,27 @@ class ArchiMateConnector:
         return clean if clean.startswith("id-") else f"id-{clean}"
 
     @classmethod
+    def _add_open_exchange_domain_id(cls, elem: ET.Element, domain_id: str) -> None:
+        """Store original domain ID in Open Exchange element properties for lossless round-trip."""
+        props = ET.SubElement(elem, f"{{{cls.ARCHIMATE_NS}}}properties")
+        prop = ET.SubElement(
+            props,
+            f"{{{cls.ARCHIMATE_NS}}}property",
+            attrib={"propertyDefinitionRef": "propref-tecton-domain-id"},
+        )
+        val = ET.SubElement(
+            prop,
+            f"{{{cls.ARCHIMATE_NS}}}value",
+            attrib={"{http://www.w3.org/XML/1998/namespace}lang": "en"},
+        )
+        val.text = domain_id
+
+    @classmethod
+    def _add_archi_domain_id(cls, elem: ET.Element, domain_id: str) -> None:
+        """Store original domain ID in Archi native element property for lossless round-trip."""
+        ET.SubElement(elem, "property", attrib={"key": "tecton:domain-id", "value": domain_id})
+
+    @classmethod
     def export_xml(cls, graph: CompiledGraph, model_name: str = "Tecton Architecture Model") -> str:
         """Export CompiledGraph into standard ArchiMate Open Exchange XML format."""
         ET.register_namespace("", cls.ARCHIMATE_NS)
@@ -64,6 +85,7 @@ class ArchiMateConnector:
             if cap.description:
                 c_doc = ET.SubElement(elem, f"{{{cls.ARCHIMATE_NS}}}documentation", attrib={"{http://www.w3.org/XML/1998/namespace}lang": "en"})
                 c_doc.text = cap.description
+            cls._add_open_exchange_domain_id(elem, cap.id)
 
             # Capability hierarchy as Composition relationship
             if cap.parent_id and cap.parent_id in graph.capabilities:
@@ -95,6 +117,7 @@ class ArchiMateConnector:
             if sys.description:
                 s_doc = ET.SubElement(elem, f"{{{cls.ARCHIMATE_NS}}}documentation", attrib={"{http://www.w3.org/XML/1998/namespace}lang": "en"})
                 s_doc.text = sys.description
+            cls._add_open_exchange_domain_id(elem, sys.id)
 
             # Realization of capabilities
             for cap_id in sys.capabilities:
@@ -127,6 +150,7 @@ class ArchiMateConnector:
             if iface.description:
                 i_doc = ET.SubElement(elem, f"{{{cls.ARCHIMATE_NS}}}documentation", attrib={"{http://www.w3.org/XML/1998/namespace}lang": "en"})
                 i_doc.text = iface.description
+            cls._add_open_exchange_domain_id(elem, iface.id)
 
             # Assignment: Provider System -> Interface
             if iface.provider_system_id in graph.systems:
@@ -158,6 +182,7 @@ class ArchiMateConnector:
             if do.description:
                 d_doc = ET.SubElement(elem, f"{{{cls.ARCHIMATE_NS}}}documentation", attrib={"{http://www.w3.org/XML/1998/namespace}lang": "en"})
                 d_doc.text = do.description
+            cls._add_open_exchange_domain_id(elem, do.id)
 
         # 5. Technologies (Nodes)
         for tech in graph.technologies.values():
@@ -174,6 +199,7 @@ class ArchiMateConnector:
             if tech.description:
                 t_doc = ET.SubElement(elem, f"{{{cls.ARCHIMATE_NS}}}documentation", attrib={"{http://www.w3.org/XML/1998/namespace}lang": "en"})
                 t_doc.text = tech.description
+            cls._add_open_exchange_domain_id(elem, tech.id)
 
         # 6. Plateaus
         for plateau in graph.plateaus.values():
@@ -190,6 +216,7 @@ class ArchiMateConnector:
             if plateau.description:
                 p_doc = ET.SubElement(elem, f"{{{cls.ARCHIMATE_NS}}}documentation", attrib={"{http://www.w3.org/XML/1998/namespace}lang": "en"})
                 p_doc.text = plateau.description
+            cls._add_open_exchange_domain_id(elem, plateau.id)
 
             if plateau.previous_plateau_id and plateau.previous_plateau_id in graph.plateaus:
                 rel = ET.SubElement(
@@ -220,6 +247,7 @@ class ArchiMateConnector:
             if wp.description:
                 w_doc = ET.SubElement(elem, f"{{{cls.ARCHIMATE_NS}}}documentation", attrib={"{http://www.w3.org/XML/1998/namespace}lang": "en"})
                 w_doc.text = wp.description
+            cls._add_open_exchange_domain_id(elem, wp.id)
 
         # 8. C4 System Relationships (Flow)
         for idx, rel_def in enumerate(graph.relationships):
@@ -235,6 +263,20 @@ class ArchiMateConnector:
             )
             r_name = ET.SubElement(rel, f"{{{cls.ARCHIMATE_NS}}}name", attrib={"{http://www.w3.org/XML/1998/namespace}lang": "en"})
             r_name.text = rel_def.description or "Interacts with"
+
+        # Property definitions container (strict XSD order: elements -> relationships -> propertyDefinitions -> views)
+        prop_defs_elem = ET.SubElement(root, f"{{{cls.ARCHIMATE_NS}}}propertyDefinitions")
+        prop_def = ET.SubElement(
+            prop_defs_elem,
+            f"{{{cls.ARCHIMATE_NS}}}propertyDefinition",
+            attrib={"identifier": "propref-tecton-domain-id", "type": "string"},
+        )
+        pdef_name = ET.SubElement(
+            prop_def,
+            f"{{{cls.ARCHIMATE_NS}}}name",
+            attrib={"{http://www.w3.org/XML/1998/namespace}lang": "en"},
+        )
+        pdef_name.text = "tecton:domain-id"
 
         # 9. Default Architecture Views (Diagrams)
         views_specs = cls._generate_default_views(graph)
@@ -326,6 +368,7 @@ class ArchiMateConnector:
             if cap.description:
                 doc = ET.SubElement(elem, "documentation")
                 doc.text = cap.description
+            cls._add_archi_domain_id(elem, cap.id)
 
         # 2. Application Folder -> Systems, Interfaces, Data Objects
         for sys in graph.systems.values():
@@ -341,6 +384,7 @@ class ArchiMateConnector:
             if sys.description:
                 doc = ET.SubElement(elem, "documentation")
                 doc.text = sys.description
+            cls._add_archi_domain_id(elem, sys.id)
 
         for iface in graph.interfaces.values():
             elem = ET.SubElement(
@@ -355,6 +399,7 @@ class ArchiMateConnector:
             if iface.description:
                 doc = ET.SubElement(elem, "documentation")
                 doc.text = iface.description
+            cls._add_archi_domain_id(elem, iface.id)
 
         for do in graph.data_objects.values():
             elem = ET.SubElement(
@@ -369,6 +414,7 @@ class ArchiMateConnector:
             if do.description:
                 doc = ET.SubElement(elem, "documentation")
                 doc.text = do.description
+            cls._add_archi_domain_id(elem, do.id)
 
         # 3. Technology Folder -> Nodes
         for tech in graph.technologies.values():
@@ -384,6 +430,7 @@ class ArchiMateConnector:
             if tech.description:
                 doc = ET.SubElement(elem, "documentation")
                 doc.text = tech.description
+            cls._add_archi_domain_id(elem, tech.id)
 
         # 4. Implementation Folder -> Plateaus & Work Packages
         for plateau in graph.plateaus.values():
@@ -399,6 +446,7 @@ class ArchiMateConnector:
             if plateau.description:
                 doc = ET.SubElement(elem, "documentation")
                 doc.text = plateau.description
+            cls._add_archi_domain_id(elem, plateau.id)
 
         for wp in graph.work_packages.values():
             elem = ET.SubElement(
@@ -413,6 +461,7 @@ class ArchiMateConnector:
             if wp.description:
                 doc = ET.SubElement(elem, "documentation")
                 doc.text = wp.description
+            cls._add_archi_domain_id(elem, wp.id)
 
         # 5. Relations Folder -> Composition, Realization, Assignment, Flow, Triggering
         for cap in graph.capabilities.values():
@@ -786,6 +835,7 @@ class ArchiMateConnector:
 
         systems_dict: dict[str, dict[str, Any]] = {}
         capabilities_dict: dict[str, dict[str, Any]] = {}
+        xml_to_domain: dict[str, str] = {}
 
         # Scan elements
         for elem in root.iter():
@@ -797,66 +847,83 @@ class ArchiMateConnector:
                     if strip_ns(k) == "type":
                         xsi_type = strip_ns(v)
 
+                # Skip if this element is a relationship (Archi native stores relationships as element)
+                if xsi_type.endswith("Relationship") or ("source" in elem.attrib and "target" in elem.attrib):
+                    continue
+
                 name_node = None
                 doc_node = None
+                domain_id = None
                 for child in elem:
                     c_tag = strip_ns(child.tag)
                     if c_tag == "name":
                         name_node = child.text
                     elif c_tag == "documentation":
                         doc_node = child.text
+                    elif c_tag == "properties":
+                        for prop in child:
+                            if prop.attrib.get("propertyDefinitionRef") == "propref-tecton-domain-id":
+                                for val in prop:
+                                    if strip_ns(val.tag) == "value" and val.text:
+                                        domain_id = val.text.strip()
+                    elif c_tag == "property":
+                        if child.attrib.get("key") == "tecton:domain-id":
+                            domain_id = child.attrib.get("value")
 
-                name = elem.attrib.get("name") or name_node or elem_id
+                if not domain_id:
+                    if elem_id.startswith("id-") and any(elem_id.startswith(f"id-{p}") for p in ("sys-", "cap-", "tech-", "if-", "data-", "plat-", "wp-")):
+                        domain_id = elem_id[3:]
+                    else:
+                        domain_id = elem_id
+
+                xml_to_domain[elem_id] = domain_id
+                name = elem.attrib.get("name") or name_node or domain_id
                 desc = doc_node or ""
-
-                # Skip if this element is a relationship (Archi native stores relationships as element)
-                if xsi_type.endswith("Relationship") or ("source" in elem.attrib and "target" in elem.attrib):
-                    continue
 
                 if xsi_type == "ApplicationComponent":
                     sys_obj = {
-                        "id": elem_id,
+                        "id": domain_id,
                         "name": name,
                         "description": desc,
                         "capabilities": [],
                     }
-                    systems_dict[elem_id] = sys_obj
+                    systems_dict[domain_id] = sys_obj
                 elif xsi_type == "Capability":
                     cap_obj = {
-                        "id": elem_id,
+                        "id": domain_id,
                         "name": name,
                         "description": desc,
                     }
-                    capabilities_dict[elem_id] = cap_obj
+                    capabilities_dict[domain_id] = cap_obj
                 elif xsi_type == "ApplicationInterface":
                     manifest["interfaces"].append({
-                        "id": elem_id,
+                        "id": domain_id,
                         "name": name,
                         "provider_system_id": "unknown",
                         "description": desc,
                     })
                 elif xsi_type == "DataObject":
                     manifest["data_objects"].append({
-                        "id": elem_id,
+                        "id": domain_id,
                         "name": name,
                         "description": desc,
                         "classification": "INTERNAL",
                     })
                 elif xsi_type in ("Node", "TechnologyService", "Device"):
                     manifest["technologies"].append({
-                        "id": elem_id,
+                        "id": domain_id,
                         "name": name,
                         "description": desc,
                     })
                 elif xsi_type == "Plateau":
                     manifest["plateaus"].append({
-                        "id": elem_id,
+                        "id": domain_id,
                         "name": name,
                         "description": desc,
                     })
                 elif xsi_type == "WorkPackage":
                     manifest["work_packages"].append({
-                        "id": elem_id,
+                        "id": domain_id,
                         "name": name,
                         "description": desc,
                     })
@@ -864,11 +931,14 @@ class ArchiMateConnector:
         # Scan relationships (can be <relationship> or <element xsi:type="archimate:...Relationship">)
         for rel in root.iter():
             tag_name = strip_ns(rel.tag)
-            src = rel.attrib.get("source", "")
-            dst = rel.attrib.get("target", "")
+            src_raw = rel.attrib.get("source", "")
+            dst_raw = rel.attrib.get("target", "")
 
-            if not (src and dst):
+            if not (src_raw and dst_raw):
                 continue
+
+            src = xml_to_domain.get(src_raw, src_raw)
+            dst = xml_to_domain.get(dst_raw, dst_raw)
 
             xsi_type = ""
             for k, v in rel.attrib.items():
