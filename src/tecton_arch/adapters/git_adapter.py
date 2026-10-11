@@ -17,12 +17,15 @@ class GitRepositoryAdapter(InMemoryRepositoryAdapter):
     and serves Application Portfolio Management (APM) requests.
     """
 
-    def __init__(self, workspace_path: str | Path) -> None:
+    def __init__(self, workspace_path: str | Path, config: Any = None, strict: bool = False) -> None:
         super().__init__()
         self.workspace_path = Path(workspace_path)
-        self.parser = C4EAMParser()
+        self.config = config
+        self.strict = strict
+        self.parser = C4EAMParser(config=self.config, strict=self.strict)
         self.graph: CompiledGraph = self.parser.parse_directory(self.workspace_path)
         self._hydrate()
+
 
     def _hydrate(self) -> None:
         """Hydrate internal storage with applications from the compiled graph."""

@@ -17,6 +17,7 @@ been resolved. It is an engineering assessment, not a production readiness certi
 | Static/live portal application payloads diverged | Shared application serialization includes owners and child components | Pilot/portal tests |
 | Portal loaded external network assets | Bundled offline assets include D3 7.9.0, Mermaid 10.9.8, and Tailwind CSS 3.4.17 runtime with zero CDN requests | Browser offline tests (`tests/browser/test_radar.py`) and distribution checks |
 | Partial time determinism | Global `as_of_date` temporal evaluation injected across domain models (`phase_as_of`), engines, application DTOs, CLI subcommands (`validate`, `trm`, `apm`, `roadmap`, `export portal`), and REST API | `tests/unit/test_roadmap_engine.py`, `tests/unit/test_application.py`, `tests/integration/test_server.py`, `test_validate_cli.py`, `test_trm_cli.py`, `test_roadmap_cli.py` |
+| Discovery and schema strictness | Manifest discovery is scoped via `tecton.yaml` (`include`/`exclude`), configuration files are excluded from manifests, empty workspaces trigger `EMPTY_WORKSPACE` (error in strict mode), and unknown entity fields are strictly rejected (`extra="forbid"`) | `tests/unit/test_dsl_parser.py`, `tests/integration/test_validate_cli.py` |
 
 These changes do not eliminate all coupling, mutation or ingestion risks.
 
@@ -30,22 +31,19 @@ These changes do not eliminate all coupling, mutation or ingestion risks.
    or multiple updates do not have a transactional rollback guarantee. General
    JSON Patch semantics, concurrent-write locking and formatting preservation
    are not provided.
-3. **Discovery and schema strictness.** Entity-like JSON/YAML can still be
-   inferred, unknown fields are generally ignored, and an empty workspace passes.
-   Explicit workspace paths and reviewed manifests remain necessary.
-4. **Local API access.** Read endpoints are unauthenticated. Optional token
+3. **Local API access.** Read endpoints are unauthenticated. Optional token
    checking applies only to reload. `--reload` currently has no file-watching
    effect. Production hosting needs external access controls and a refresh plan.
-5. **Interchange coverage.** Connectors map supported entities and preserve IDs
+4. **Interchange coverage.** Connectors map supported entities and preserve IDs
    through annotations/properties. Field-complete round trips, external XSD
    validation and arbitrary tool compatibility are not established.
 
 ## Follow-up order
 
-Prioritize fixed-date evaluation when reproducible historical analysis becomes a
-concrete requirement. Introduce stricter/scoped ingestion before expanding catalog discovery. Broaden persistence
-only with explicit patch contracts, validation-before-write and failure tests.
-Benchmark representative data before stating latency or scale guarantees.
+Broaden persistence only with explicit patch contracts, validation-before-write
+and failure tests. Benchmark representative data before stating latency or scale
+guarantees.
+
 
 ## Review procedure
 

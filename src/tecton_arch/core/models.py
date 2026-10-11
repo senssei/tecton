@@ -3,7 +3,7 @@
 from datetime import date
 from enum import Enum
 from typing import Any
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class TimeQuadrant(str, Enum):
@@ -50,11 +50,13 @@ class LifecyclePhaseDate(BaseModel):
     phase: LifecyclePhase
     start_date: date
 
-    model_config = {"frozen": True}
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
 
 class Lifecycle(BaseModel):
     """Lifecycle history and phases of an architectural entity."""
+
+    model_config = ConfigDict(extra="forbid")
 
     as_string: str | None = None
     phases: list[LifecyclePhaseDate] = Field(default_factory=list)

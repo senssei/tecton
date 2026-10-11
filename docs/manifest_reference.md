@@ -89,22 +89,24 @@ workspace rather than relying on reference resolution across separate CLI calls.
   with `phase` and `start_date`.
 
 `current_phase` can be explicit or inferred from the lifecycle and today's date.
-Some analysis APIs accept `as_of_date`; a global historical date is not exposed
-by the CLI. Unknown model fields are generally ignored, so validation is not a
-strict typo detector. `level` is a free string; L1/L2/L3 are conventions.
+Some analysis APIs accept `as_of_date`; a global historical date is evaluated
+consistently across domain models and CLI subcommands. Unknown model fields are
+strictly rejected across all metamodel definitions (`extra="forbid"`), turning validation into
+an effective typo detector. `level` is a free string; L1/L2/L3 are conventions.
 
 ## Discovery and validation severity
 
 The loader reads `.yaml`, `.yml` and `.json`, skips hidden paths and common build,
 virtual-environment and dependency directories, and supports explicit `kind` for
-individual entities. It also retains heuristic detection of entity-like mappings.
-Prefer a dedicated catalog path; do not expect arbitrary repository JSON to be safe
-from heuristic ingestion.
+individual entities. Workspace manifest discovery can be scoped via `tecton.yaml` using
+`manifests.include` and `manifests.exclude`. Configuration files (`tecton.yaml`, etc.)
+are excluded from manifest ingestion.
 
-Duplicate IDs, dangling references and capability hierarchy cycles are errors.
+Duplicate IDs, dangling references, schema/typo violations and capability hierarchy cycles are errors.
 Dependency cycles and some date/technology findings are warnings. `--strict`
-blocks warnings; `--require-owner` rejects missing or whitespace-only system
+blocks warnings and rejects empty workspaces (`EMPTY_WORKSPACE`); `--require-owner` rejects missing or whitespace-only system
 owners. It does not require system descriptions or lifecycle phases globally.
+
 
 ## Data flow diagrams
 

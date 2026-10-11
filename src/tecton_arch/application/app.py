@@ -36,13 +36,21 @@ from tecton_arch.services.trm_service import TRMService
 class TectonApp:
     """Central facade orchestrating Architecture Intelligence use cases."""
 
-    def __init__(self, workspace: Workspace | Path | str = ".", as_of_date: date | None = None) -> None:
+    def __init__(
+        self,
+        workspace: Workspace | Path | str = ".",
+        as_of_date: date | None = None,
+        config: Any = None,
+        strict: bool = False,
+    ) -> None:
         if isinstance(workspace, Workspace):
             self.workspace = workspace
         else:
-            self.workspace = Workspace(workspace)
+            self.workspace = Workspace(workspace, config=config, strict=strict)
         self.as_of_date = as_of_date
+        self.strict = strict or getattr(self.workspace, "strict", False)
         self.exporter_registry = ExporterRegistry.default()
+
 
     @property
     def graph(self):
@@ -106,7 +114,12 @@ class TectonApp:
         """Run architecture quality gate and graph linter."""
         eval_date = as_of_date or self.as_of_date
         graph = self.graph
-        report = GraphLinter().lint(graph, as_of_date=eval_date, require_owner=require_owner)
+        report = GraphLinter().lint(
+            graph,
+            as_of_date=eval_date,
+            require_owner=require_owner,
+            strict=strict,
+        )
 
         dto_issues = [
             ValidationIssueDto(
@@ -132,6 +145,8 @@ class TectonApp:
                 f"Architecture Quality Gate failed in strict mode ({report.error_count} errors, {report.warning_count} warnings)"
             )
         return result
+
+
 
     def export(self, format_name: str, options: dict[str, Any] | None = None) -> ExportResultDto:
         """Export architecture graph to the target format via the Exporter Registry."""

@@ -1,11 +1,13 @@
 """In-Memory Graph Compiler and Directory Manifest Parser for C4-Extended EAM DSL."""
 
+import fnmatch
 import json
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 from typing import Any
 import yaml
+from pydantic import ValidationError
 
 from tecton_arch.core.models import Application
 from tecton_arch.dsl.schema import (
@@ -21,6 +23,12 @@ from tecton_arch.dsl.schema import (
     TechnologyDef,
     WorkPackageDef,
 )
+
+CONFIG_FILENAMES = {"tecton.yaml", "tecton.yml", ".tecton.yaml", ".tecton.yml"}
+
+
+class SchemaValidationError(ValueError):
+    """Raised when manifest content violates strict schema constraints or contains unknown fields."""
 
 
 @dataclass
@@ -39,6 +47,18 @@ class SymbolTable:
     symbol_origins: dict[str, str] = field(default_factory=dict)
     duplicate_ids: list[tuple[str, str, str]] = field(default_factory=list)
     data_flow_diagrams: dict[str, DataFlowDiagramDef] = field(default_factory=dict)
+    schema_issues: list[tuple[str, str, str, str | None, str | None]] = field(default_factory=list)
+
+    def add_schema_issue(
+        self,
+        severity: str,
+        rule: str,
+        message: str,
+        entity_id: str | None = None,
+        file_origin: str | None = None,
+    ) -> None:
+        self.schema_issues.append((severity, rule, message, entity_id, file_origin))
+
 
     def register_data_flow_diagram(self, diagram: DataFlowDiagramDef, origin: str) -> None:
         if diagram.id in self.symbol_origins:
@@ -170,6 +190,11 @@ class CompiledGraph:
     def duplicate_ids(self) -> list[tuple[str, str, str]]:
         return self.table.duplicate_ids
 
+    @property
+    def schema_issues(self) -> list[tuple[str, str, str, str | None, str | None]]:
+        return self.table.schema_issues
+
+
     def all_symbol_ids(self) -> set[str]:
         """Return union of all registered entity IDs."""
         return (
@@ -220,11 +245,12 @@ class CompiledGraph:
 class C4EAMParser:
     """Parser and Compiler for C4-Extended EAM DSL workspace directories and manifests."""
 
-    def __init__(self) -> None:
-        pass
+    def __init__(self, config: Any = None, strict: bool = False) -> None:
+        self.config = config
+        self.strict = strict
 
     def parse_directory(self, dir_path: Path | str) -> CompiledGraph:
-        """Recursively scan directory and parse all YAML and JSON manifests."""
+        """Recursively scan directory and parse scoped YAML and JSON manifests."""
         path = Path(dir_path)
         if not path.exists():
             raise FileNotFoundError(f"Architecture directory not found: {path}")
@@ -235,9 +261,22 @@ class C4EAMParser:
         if path.is_file():
             self._parse_file(path, table)
             parsed_files.append(str(path))
+            if self.strict and any(sev.upper() == "ERROR" for sev, _, _, _, _ in table.schema_issues):
+                err_msgs = [f"[{rule}] {msg}" for sev, rule, msg, _, _ in table.schema_issues if sev.upper() == "ERROR"]
+                raise SchemaValidationError(f"Strict manifest parsing failed for {path}: {'; '.join(err_msgs)}")
             return CompiledGraph(table, parsed_files)
 
-        # Sort for deterministic processing
+        # Determine includes and excludes
+        include_patterns = ["**/*.yaml", "**/*.yml", "**/*.json"]
+        exclude_patterns: list[str] = []
+        if self.config:
+            manifests_cfg = getattr(self.config, "manifests", None)
+            if manifests_cfg:
+                if getattr(manifests_cfg, "include", None):
+                    include_patterns = list(manifests_cfg.include)
+                if getattr(manifests_cfg, "exclude", None):
+                    exclude_patterns = list(manifests_cfg.exclude)
+
         ignored_dir_names = {
             "node_modules",
             "dist",
@@ -250,19 +289,38 @@ class C4EAMParser:
             ".pytest_cache",
             ".ruff_cache",
         }
-        manifest_files = sorted(
-            [
-                p
-                for p in path.rglob("*")
-                if p.is_file()
-                and p.suffix.lower() in (".yaml", ".yml", ".json")
-                and not any(part.startswith(".") or part in ignored_dir_names for part in p.parts)
-            ]
-        )
+
+        def is_ignored(p: Path) -> bool:
+            if p.name in CONFIG_FILENAMES:
+                return True
+            try:
+                rel = p.relative_to(path)
+                for part in rel.parts[:-1]:
+                    if part.startswith(".") or part in ignored_dir_names:
+                        return True
+            except ValueError:
+                for part in p.parts:
+                    if part.startswith(".") or part in ignored_dir_names:
+                        return True
+            return False
+
+        candidates: set[Path] = set()
+        for pat in include_patterns:
+            candidates.update(p for p in path.glob(pat) if p.is_file())
+
+        for pat in exclude_patterns:
+            candidates.difference_update(path.glob(pat))
+
+        manifest_files = sorted(p for p in candidates if not is_ignored(p))
+
 
         for mf in manifest_files:
             self._parse_file(mf, table)
             parsed_files.append(str(mf))
+
+        if self.strict and any(sev.upper() == "ERROR" for sev, _, _, _, _ in table.schema_issues):
+            err_msgs = [f"[{rule}] {msg}" for sev, rule, msg, _, _ in table.schema_issues if sev.upper() == "ERROR"]
+            raise SchemaValidationError(f"Strict manifest parsing failed in workspace: {'; '.join(err_msgs)}")
 
         return CompiledGraph(table, parsed_files)
 
@@ -270,6 +328,9 @@ class C4EAMParser:
         """Parse raw YAML or JSON string content."""
         table = SymbolTable()
         self._parse_content_into_table(content, file_origin, table)
+        if self.strict and any(sev.upper() == "ERROR" for sev, _, _, _, _ in table.schema_issues):
+            err_msgs = [f"[{rule}] {msg}" for sev, rule, msg, _, _ in table.schema_issues if sev.upper() == "ERROR"]
+            raise SchemaValidationError(f"Strict manifest parsing failed in {file_origin}: {'; '.join(err_msgs)}")
         return CompiledGraph(table, [file_origin])
 
     def _parse_file(self, file_path: Path, table: SymbolTable) -> None:
@@ -292,78 +353,141 @@ class C4EAMParser:
             for item in doc:
                 if isinstance(item, dict):
                     self._ingest_single_dict(item, origin, table)
+                else:
+                    msg = f"Unexpected non-object element in list: {item}"
+                    table.add_schema_issue("ERROR", "INVALID_MANIFEST_STRUCTURE", msg, None, origin)
+                    if self.strict:
+                        raise SchemaValidationError(f"{origin}: {msg}")
         elif isinstance(doc, dict):
-            # Check if it has collection keys: capabilities, systems, etc.
-            has_collections = any(
-                k in doc for k in (
-                    "capabilities", "systems", "containers", "relationships",
-                    "technologies", "data_objects", "interfaces", "plateaus", "work_packages", "data_flow_diagrams"
-                )
-            )
+            known_collections = {
+                "capabilities", "systems", "containers", "relationships",
+                "technologies", "data_objects", "interfaces", "plateaus",
+                "work_packages", "data_flow_diagrams",
+            }
+            has_collections = any(k in doc for k in known_collections)
             if has_collections:
-                for raw in doc.get("data_flow_diagrams", []):
-                    table.register_data_flow_diagram(DataFlowDiagramDef.model_validate(raw), origin)
-                for cap_raw in doc.get("capabilities", []):
-                    table.register_capability(BusinessCapabilityDef.model_validate(cap_raw), origin)
-                for sys_raw in doc.get("systems", []):
-                    table.register_system(SoftwareSystemDef.model_validate(sys_raw), origin)
-                for cnt_raw in doc.get("containers", []):
-                    table.register_container(ContainerDef.model_validate(cnt_raw), origin)
-                for rel_raw in doc.get("relationships", []):
-                    table.register_relationship(RelationshipDef.model_validate(rel_raw))
-                for tech_raw in doc.get("technologies", []):
-                    table.register_technology(TechnologyDef.model_validate(tech_raw), origin)
-                for data_raw in doc.get("data_objects", []):
-                    table.register_data_object(DataObjectDef.model_validate(data_raw), origin)
-                for iface_raw in doc.get("interfaces", []):
-                    table.register_interface(InterfaceDef.model_validate(iface_raw), origin)
-                for p_raw in doc.get("plateaus", []):
-                    table.register_plateau(PlateauDef.model_validate(p_raw), origin)
-                for wp_raw in doc.get("work_packages", []):
-                    table.register_work_package(WorkPackageDef.model_validate(wp_raw), origin)
+                extra_top_keys = set(doc.keys()) - known_collections
+                if extra_top_keys:
+                    msg = f"Extra top-level keys not permitted in collection manifest: {sorted(extra_top_keys)}"
+                    table.add_schema_issue("ERROR", "SCHEMA_EXTRA_FORBIDDEN", msg, None, origin)
+                    if self.strict:
+                        raise SchemaValidationError(f"{origin}: {msg}")
+
+                self._ingest_collection(doc.get("data_flow_diagrams", []), DataFlowDiagramDef, table.register_data_flow_diagram, "data_flow_diagrams", origin, table)
+                self._ingest_collection(doc.get("capabilities", []), BusinessCapabilityDef, table.register_capability, "capabilities", origin, table)
+                self._ingest_collection(doc.get("systems", []), SoftwareSystemDef, table.register_system, "systems", origin, table)
+                self._ingest_collection(doc.get("containers", []), ContainerDef, table.register_container, "containers", origin, table)
+                self._ingest_collection(doc.get("relationships", []), RelationshipDef, lambda rel, orig: table.register_relationship(rel), "relationships", origin, table)
+                self._ingest_collection(doc.get("technologies", []), TechnologyDef, table.register_technology, "technologies", origin, table)
+                self._ingest_collection(doc.get("data_objects", []), DataObjectDef, table.register_data_object, "data_objects", origin, table)
+                self._ingest_collection(doc.get("interfaces", []), InterfaceDef, table.register_interface, "interfaces", origin, table)
+                self._ingest_collection(doc.get("plateaus", []), PlateauDef, table.register_plateau, "plateaus", origin, table)
+                self._ingest_collection(doc.get("work_packages", []), WorkPackageDef, table.register_work_package, "work_packages", origin, table)
             else:
                 self._ingest_single_dict(doc, origin, table)
+        elif doc is not None:
+            msg = f"Unexpected manifest document type {type(doc).__name__}"
+            table.add_schema_issue("ERROR", "INVALID_MANIFEST_STRUCTURE", msg, None, origin)
+            if self.strict:
+                raise SchemaValidationError(f"{origin}: {msg}")
+
+    def _ingest_collection(
+        self,
+        items: Any,
+        model_cls: type,
+        register_fn: Any,
+        entity_name: str,
+        origin: str,
+        table: SymbolTable,
+    ) -> None:
+        if not items:
+            return
+        if not isinstance(items, list):
+            msg = f"Collection '{entity_name}' must be a list, got {type(items).__name__}"
+            table.add_schema_issue("ERROR", "INVALID_COLLECTION_TYPE", msg, None, origin)
+            if self.strict:
+                raise SchemaValidationError(f"{origin}: {msg}")
+            return
+
+        for raw in items:
+            if not isinstance(raw, dict):
+                msg = f"Item in '{entity_name}' collection must be a mapping, got {type(raw).__name__}"
+                table.add_schema_issue("ERROR", "INVALID_ENTITY_STRUCTURE", msg, None, origin)
+                if self.strict:
+                    raise SchemaValidationError(f"{origin}: {msg}")
+                continue
+            try:
+                entity = model_cls.model_validate(raw)
+                register_fn(entity, origin)
+            except ValidationError as e:
+                ent_id = raw.get("id") or (f"{raw.get('source_id')}->{raw.get('target_id')}" if "source_id" in raw else None)
+                clean_errs = "; ".join(f"{'.'.join(str(loc) for loc in err['loc'])}: {err['msg']}" for err in e.errors())
+                msg = f"Validation failed for {entity_name} '{ent_id or 'unknown'}': {clean_errs}"
+                table.add_schema_issue("ERROR", "SCHEMA_VALIDATION_ERROR", msg, ent_id, origin)
+                if self.strict:
+                    raise SchemaValidationError(f"{origin}: {msg}") from e
 
     def _ingest_single_dict(self, item: dict[str, Any], origin: str, table: SymbolTable) -> None:
-        kind = item.get("kind", "").lower()
+        kind = item.get("kind", "").lower() if isinstance(item.get("kind"), str) else ""
+        ent_id = item.get("id") or (f"{item.get('source_id')}->{item.get('target_id')}" if "source_id" in item else None)
+
+        def _validate_and_register(model_cls: type, register_fn: Any, name: str) -> bool:
+            try:
+                entity = model_cls.model_validate(item)
+                register_fn(entity, origin)
+                return True
+            except ValidationError as e:
+                clean_errs = "; ".join(f"{'.'.join(str(loc) for loc in err['loc'])}: {err['msg']}" for err in e.errors())
+                msg = f"Validation failed for {name} '{ent_id or 'unknown'}': {clean_errs}"
+                table.add_schema_issue("ERROR", "SCHEMA_VALIDATION_ERROR", msg, ent_id, origin)
+                if self.strict:
+                    raise SchemaValidationError(f"{origin}: {msg}") from e
+                return False
+
         if kind in ("data_flow_diagram", "dfd"):
-            table.register_data_flow_diagram(DataFlowDiagramDef.model_validate(item), origin)
+            _validate_and_register(DataFlowDiagramDef, table.register_data_flow_diagram, "data_flow_diagram")
         elif kind in ("capability", "businesscapability"):
-            table.register_capability(BusinessCapabilityDef.model_validate(item), origin)
+            _validate_and_register(BusinessCapabilityDef, table.register_capability, "capability")
         elif kind in ("system", "softwaresystem", "application"):
-            table.register_system(SoftwareSystemDef.model_validate(item), origin)
+            _validate_and_register(SoftwareSystemDef, table.register_system, "system")
         elif kind in ("container",):
-            table.register_container(ContainerDef.model_validate(item), origin)
+            _validate_and_register(ContainerDef, table.register_container, "container")
         elif kind in ("relationship",):
-            table.register_relationship(RelationshipDef.model_validate(item))
+            _validate_and_register(RelationshipDef, lambda rel, orig: table.register_relationship(rel), "relationship")
         elif kind in ("technology",):
-            table.register_technology(TechnologyDef.model_validate(item), origin)
+            _validate_and_register(TechnologyDef, table.register_technology, "technology")
         elif kind in ("dataobject", "data_object", "data-object"):
-            table.register_data_object(DataObjectDef.model_validate(item), origin)
+            _validate_and_register(DataObjectDef, table.register_data_object, "data_object")
         elif kind in ("interface", "api", "contract"):
-            table.register_interface(InterfaceDef.model_validate(item), origin)
+            _validate_and_register(InterfaceDef, table.register_interface, "interface")
         elif kind in ("plateau", "architectureplateau", "architecture_plateau"):
-            table.register_plateau(PlateauDef.model_validate(item), origin)
+            _validate_and_register(PlateauDef, table.register_plateau, "plateau")
         elif kind in ("workpackage", "work_package", "work-package", "project", "initiative"):
-            table.register_work_package(WorkPackageDef.model_validate(item), origin)
+            _validate_and_register(WorkPackageDef, table.register_work_package, "work_package")
+        elif "kind" in item and item["kind"]:
+            msg = f"Unrecognized entity kind '{item['kind']}'"
+            table.add_schema_issue("ERROR", "UNRECOGNIZED_ENTITY_KIND", msg, ent_id, origin)
+            if self.strict:
+                raise SchemaValidationError(f"{origin}: {msg}")
         else:
             # Heuristic detection based on required fields
+            inferred = False
             if "provider_system_id" in item and "id" in item and "name" in item:
-                table.register_interface(InterfaceDef.model_validate(item), origin)
+                inferred = _validate_and_register(InterfaceDef, table.register_interface, "interface")
             elif "classification" in item and "id" in item and "name" in item:
-                table.register_data_object(DataObjectDef.model_validate(item), origin)
+                inferred = _validate_and_register(DataObjectDef, table.register_data_object, "data_object")
             elif "system_id" in item and "id" in item and "name" in item:
-                table.register_container(ContainerDef.model_validate(item), origin)
+                inferred = _validate_and_register(ContainerDef, table.register_container, "container")
             elif "source_id" in item and "target_id" in item:
-                table.register_relationship(RelationshipDef.model_validate(item))
+                inferred = _validate_and_register(RelationshipDef, lambda rel, orig: table.register_relationship(rel), "relationship")
             elif "level" in item and "id" in item and "name" in item:
-                table.register_capability(BusinessCapabilityDef.model_validate(item), origin)
+                inferred = _validate_and_register(BusinessCapabilityDef, table.register_capability, "capability")
             elif ("status" in item or "eol_date" in item or "category" in item) and "id" in item and "name" in item:
-                table.register_technology(TechnologyDef.model_validate(item), origin)
+                inferred = _validate_and_register(TechnologyDef, table.register_technology, "technology")
             elif ("active_system_ids" in item or "decommissioned_system_ids" in item) and "id" in item and "name" in item:
-                table.register_plateau(PlateauDef.model_validate(item), origin)
+                inferred = _validate_and_register(PlateauDef, table.register_plateau, "plateau")
             elif ("from_plateau_id" in item or "to_plateau_id" in item or "depends_on" in item) and "id" in item and "name" in item:
-                table.register_work_package(WorkPackageDef.model_validate(item), origin)
+                inferred = _validate_and_register(WorkPackageDef, table.register_work_package, "work_package")
             elif "id" in item and "name" in item:
                 is_system_like = (
                     "functional_suitability" in item
@@ -376,4 +500,20 @@ class C4EAMParser:
                     or str(item.get("id", "")).startswith(("sys-", "system-", "app-"))
                 )
                 if is_system_like:
-                    table.register_system(SoftwareSystemDef.model_validate(item), origin)
+                    inferred = _validate_and_register(SoftwareSystemDef, table.register_system, "system")
+
+            if inferred:
+                if self.strict:
+                    table.add_schema_issue(
+                        "WARNING",
+                        "INFERRED_ENTITY_KIND",
+                        f"Entity '{ent_id}' is missing explicit 'kind' field and was inferred heuristically.",
+                        ent_id,
+                        origin,
+                    )
+            else:
+                msg = f"Unrecognized manifest document structure with keys: {sorted(item.keys())}"
+                table.add_schema_issue("ERROR", "UNRECOGNIZED_MANIFEST_DOCUMENT", msg, ent_id, origin)
+                if self.strict:
+                    raise SchemaValidationError(f"{origin}: {msg}")
+

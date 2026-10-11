@@ -121,3 +121,97 @@ def test_parser_ignores_non_architecture_files_and_build_dirs(tmp_path):
     assert "ignored" not in graph.systems
     assert "generic-job" not in graph.systems
 
+
+def test_strict_schema_validation_rejects_unknown_fields():
+    content = """
+    systems:
+      - id: sys-typo
+        name: Typo System
+        ownr: Team Billing  # typo: should be 'owner'
+    """
+    # Strict mode raises SchemaValidationError
+    strict_parser = C4EAMParser(strict=True)
+    with pytest.raises(Exception) as exc_info:
+        strict_parser.parse_content(content)
+    assert "ownr" in str(exc_info.value) or "Extra inputs are not permitted" in str(exc_info.value)
+
+    # Lenient mode records schema issue
+    lenient_parser = C4EAMParser(strict=False)
+    graph = lenient_parser.parse_content(content)
+    assert len(graph.schema_issues) >= 1
+    sev, rule, msg, ent_id, _ = graph.schema_issues[0]
+    assert sev == "ERROR"
+    assert rule == "SCHEMA_VALIDATION_ERROR"
+    assert "ownr" in msg
+
+
+def test_strict_schema_validation_rejects_unknown_kind():
+    content = """
+    id: sys-bad
+    name: Bad System
+    kind: unknown_architecture_entity_type
+    """
+    strict_parser = C4EAMParser(strict=True)
+    with pytest.raises(Exception) as exc_info:
+        strict_parser.parse_content(content)
+    assert "Unrecognized entity kind" in str(exc_info.value)
+
+
+def test_scoped_manifests_include_and_exclude(tmp_path):
+    from tecton_arch.core.config import ManifestsConfig, TectonConfig
+
+    arch_dir = tmp_path / "architecture"
+    arch_dir.mkdir()
+    (arch_dir / "systems.yaml").write_text(
+        "systems:\n  - id: sys-prod\n    name: Prod System\n",
+        encoding="utf-8",
+    )
+
+    scratch_dir = tmp_path / "scratch"
+    scratch_dir.mkdir()
+    (scratch_dir / "draft.yaml").write_text(
+        "systems:\n  - id: sys-draft\n    name: Draft System\n",
+        encoding="utf-8",
+    )
+
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "test_model.yaml").write_text(
+        "systems:\n  - id: sys-test\n    name: Test System\n",
+        encoding="utf-8",
+    )
+
+    cfg = TectonConfig(
+        manifests=ManifestsConfig(
+            include=["architecture/**/*.yaml"],
+            exclude=["**/scratch/**", "**/tests/**"],
+        )
+    )
+
+    parser = C4EAMParser(config=cfg)
+    graph = parser.parse_directory(tmp_path)
+
+    assert "sys-prod" in graph.systems
+    assert "sys-draft" not in graph.systems
+    assert "sys-test" not in graph.systems
+    assert len(graph.files_parsed) == 1
+
+
+def test_tecton_yaml_config_not_ingested_as_manifest(tmp_path):
+    (tmp_path / "tecton.yaml").write_text(
+        "dry_run: true\ntime:\n  business_threshold: 4.0\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "systems.yaml").write_text(
+        "systems:\n  - id: sys-main\n    name: Main System\n",
+        encoding="utf-8",
+    )
+
+    parser = C4EAMParser()
+    graph = parser.parse_directory(tmp_path)
+
+    assert "sys-main" in graph.systems
+    assert len(graph.files_parsed) == 1
+    assert "tecton.yaml" not in graph.files_parsed[0]
+
+

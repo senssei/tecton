@@ -37,8 +37,9 @@ system, not on child components. `--strict` makes all warnings fail the gate.
 JSON reports include `valid`, file count, error/warning counts and issue details.
 
 Exit codes: `0` means no errors (and no warnings in strict mode); `1` means
-validation/parsing failure; `2` normally indicates CLI usage errors. A valid but
-empty workspace is accepted. Validation does not enforce coverage of all capabilities.
+validation/parsing failure (or warnings/empty workspace in strict mode); `2` normally indicates CLI usage errors. An empty
+workspace triggers an `EMPTY_WORKSPACE` warning in standard mode, and fails the gate in strict mode. Use `--config` / `-c` to point to a custom `tecton.yaml`.
+
 
 ## 📊 Analysis commands
 

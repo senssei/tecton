@@ -19,10 +19,10 @@ describes the current metamodel.
 | Reporting | Mermaid, Markdown, static/dynamic HTML portal | Bundled offline assets; no live external CMS or multi-tenant portal backend |
 | Interchange | Backstage and ArchiMate/Archi import/export | Supported mappings only; no universal lossless interchange guarantee |
 | Remote APM | GraphQL application fetch/TIME patch adapter | Endpoint-specific schema; not complete central-EAM synchronization |
+| Validation | Integrity checks, strict schema typo rejection (`extra='forbid'`), scoped discovery (`tecton.yaml`), and empty workspace detection | Supported metamodel only; does not infer missing business attributes |
 
 ## Future ideas
 
-- Scoped manifest configuration and stricter rejection of unknown fields.
 - Automated discovery and OpenAPI/AsyncAPI/Protobuf ingestion.
 - Cost/maturity aggregation and explicit realization roles.
 - Owner surveys, freshness checks, editing forms and approval workflows.
@@ -30,6 +30,7 @@ describes the current metamodel.
 - Persistent query cache and incremental graph compilation.
 - Broader EAM/CMDB connectors and organization-wide Git-catalog operation.
 - Natural-language exploration or AI enrichment, if justified by a user need.
+
 
 These are candidates, not commitments or CLI commands. A new capability should
 include source-of-truth ownership, failure behavior and validation evidence

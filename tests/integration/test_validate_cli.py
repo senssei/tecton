@@ -68,3 +68,57 @@ def test_cli_validate_as_of_date():
     data = json.loads(result.output)
     assert data["as_of_date"] == "2020-01-01"
 
+
+def test_cli_validate_empty_workspace_behavior(tmp_path: Path):
+    # Lenient validation warns but exits 0
+    res_lenient = runner.invoke(app, ["validate", str(tmp_path)])
+    assert res_lenient.exit_code == 0
+    assert "EMPTY_WORKSPACE" in res_lenient.output
+
+    # Strict validation treats empty workspace as error and exits 1
+    res_strict = runner.invoke(app, ["validate", "--strict", str(tmp_path)])
+    assert res_strict.exit_code == 1
+    assert "EMPTY_WORKSPACE" in res_strict.output
+    assert "CI/CD QUALITY GATE BLOCKED" in res_strict.output
+
+
+def test_cli_validate_strict_rejects_typo_fields(tmp_path: Path):
+    manifest = tmp_path / "systems.yaml"
+    manifest.write_text(
+        """
+        systems:
+          - id: sys-billing
+            name: Billing
+            ownr: Team Billing   # typo: should be owner
+        """,
+        encoding="utf-8",
+    )
+    res = runner.invoke(app, ["validate", str(tmp_path)])
+    assert res.exit_code == 1
+    assert "ownr" in res.output or "SCHEMA_VALIDATION_ERROR" in res.output
+    assert "CI/CD QUALITY GATE BLOCKED" in res.output
+
+
+def test_cli_validate_with_config_scoping(tmp_path: Path):
+    arch_dir = tmp_path / "architecture"
+    arch_dir.mkdir()
+    (arch_dir / "systems.yaml").write_text(
+        "systems:\n  - id: sys-valid\n    name: Valid\n",
+        encoding="utf-8",
+    )
+    ignored_dir = tmp_path / "drafts"
+    ignored_dir.mkdir()
+    (ignored_dir / "broken.yaml").write_text(
+        "systems:\n  - id: sys-draft\n    name: Draft\n    capabilities: [cap-missing]\n",
+        encoding="utf-8",
+    )
+    # Write tecton.yaml that scopes manifests to architecture/
+    (tmp_path / "tecton.yaml").write_text(
+        "manifests:\n  include:\n    - 'architecture/*.yaml'\n  exclude:\n    - 'drafts/**'\n",
+        encoding="utf-8",
+    )
+    res = runner.invoke(app, ["validate", str(tmp_path)])
+    assert res.exit_code == 0
+    assert "CI/CD QUALITY GATE PASSED" in res.output or "Architecture valid" in res.output
+
+

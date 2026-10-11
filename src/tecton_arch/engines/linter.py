@@ -79,9 +79,30 @@ class GraphLinter:
     def __init__(self) -> None:
         pass
 
-    def lint(self, graph: CompiledGraph, as_of_date: date | None = None, *, require_owner: bool = False) -> LintReport:
+    def lint(
+        self,
+        graph: CompiledGraph,
+        as_of_date: date | None = None,
+        *,
+        require_owner: bool = False,
+        strict: bool = False,
+    ) -> LintReport:
         """Execute all architectural validation passes against the compiled graph."""
         report = LintReport()
+
+        # Schema issues detected during manifest parsing
+        for sev, rule, msg, ent_id, origin in getattr(graph, "schema_issues", []):
+            severity = LintSeverity.ERROR if str(sev).upper() == "ERROR" else LintSeverity.WARNING
+            report.add_issue(severity, rule, msg, ent_id, origin)
+
+        # Check for empty workspace
+        if len(graph.all_symbol_ids()) == 0 or len(graph.files_parsed) == 0:
+            report.add_issue(
+                severity=LintSeverity.ERROR if strict else LintSeverity.WARNING,
+                rule="EMPTY_WORKSPACE",
+                message="Workspace contains no architectural entities or recognized manifests.",
+                file_origin=str(graph.files_parsed[0]) if graph.files_parsed else None,
+            )
 
         if require_owner:
             for system in graph.systems.values():
@@ -102,6 +123,7 @@ class GraphLinter:
         self._check_roadmap_governance(graph, report)
 
         return report
+
 
     def _check_duplicate_ids(self, graph: CompiledGraph, report: LintReport) -> None:
         for entity_id, orig1, orig2 in graph.duplicate_ids:

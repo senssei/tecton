@@ -7,7 +7,7 @@ with Enterprise Architecture Portfolio Management (capabilities, TIME scores, li
 from datetime import date
 from enum import Enum
 from typing import Any
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from tecton_arch.core.models import (
     Application,
@@ -16,6 +16,16 @@ from tecton_arch.core.models import (
     LifecyclePhaseDate,
     TimeQuadrant,
 )
+
+
+class BaseEntityDef(BaseModel):
+    """Base schema for all architectural entities with strict validation against unknown fields."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class TechnologyStatus(str, Enum):
@@ -27,7 +37,7 @@ class TechnologyStatus(str, Enum):
     PROHIBITED = "prohibited"
 
 
-class BusinessCapabilityDef(BaseModel):
+class BusinessCapabilityDef(BaseEntityDef):
     """Business Capability representing what an organization does."""
 
     id: str
@@ -45,7 +55,7 @@ class BusinessCapabilityDef(BaseModel):
         return clean
 
 
-class TechnologyDef(BaseModel):
+class TechnologyDef(BaseEntityDef):
     """Technology or standard evaluated in enterprise architecture tech radar."""
 
     id: str
@@ -64,7 +74,7 @@ class TechnologyDef(BaseModel):
         return clean
 
 
-class ContainerDef(BaseModel):
+class ContainerDef(BaseEntityDef):
     """C4 Container representing deployable application component."""
 
     id: str
@@ -82,7 +92,7 @@ class ContainerDef(BaseModel):
         return clean
 
 
-class RelationshipDef(BaseModel):
+class RelationshipDef(BaseEntityDef):
     """Directed architectural relationship between two entities."""
 
     source_id: str = Field(description="Slug ID of source entity")
@@ -101,6 +111,7 @@ class RelationshipDef(BaseModel):
         return clean
 
 
+
 class DataClassification(str, Enum):
     """Data privacy and security classification tiers."""
 
@@ -111,7 +122,7 @@ class DataClassification(str, Enum):
     PCI_DSS = "PCI_DSS"
 
 
-class DataObjectDef(BaseModel):
+class DataObjectDef(BaseEntityDef):
     """Business Data Object / Entity cataloged in Enterprise Architecture."""
 
     id: str
@@ -129,7 +140,7 @@ class DataObjectDef(BaseModel):
         return clean
 
 
-class InterfaceDef(BaseModel):
+class InterfaceDef(BaseEntityDef):
     """Communication interface or API contract exposed by a provider system."""
 
     id: str
@@ -149,8 +160,9 @@ class InterfaceDef(BaseModel):
         return clean
 
 
-class SoftwareSystemDef(BaseModel):
+class SoftwareSystemDef(BaseEntityDef):
     """C4 Software System extended with EAM portfolio properties."""
+
 
     id: str
     name: str
@@ -222,7 +234,7 @@ class WorkPackageStatus(str, Enum):
     CANCELLED = "CANCELLED"
 
 
-class PlateauDef(BaseModel):
+class PlateauDef(BaseEntityDef):
     """Architecture Plateau representing a stable baseline, transition, or target state."""
 
     id: str
@@ -252,7 +264,7 @@ class PlateauDef(BaseModel):
         return clean
 
 
-class WorkPackageDef(BaseModel):
+class WorkPackageDef(BaseEntityDef):
     """Transformation initiative, migration project, or work package."""
 
     id: str
@@ -290,6 +302,8 @@ class WorkPackageDef(BaseModel):
 class DFDNodeDef(BaseModel):
     """Explicit node in a diagram-local DFD namespace."""
 
+    model_config = ConfigDict(extra="forbid")
+
     id: str = Field(min_length=1)
     name: str = Field(min_length=1)
     kind: str = Field(pattern="^(process|data_store|external_entity)$")
@@ -307,6 +321,8 @@ class DFDNodeDef(BaseModel):
 class DFDFlowDef(BaseModel):
     """Named data transfer between DFD nodes; references shared data objects."""
 
+    model_config = ConfigDict(extra="forbid")
+
     id: str = Field(min_length=1)
     name: str = Field(min_length=1)
     source_id: str = Field(min_length=1)
@@ -322,7 +338,7 @@ class DFDFlowDef(BaseModel):
         return value.strip()
 
 
-class DataFlowDiagramDef(BaseModel):
+class DataFlowDiagramDef(BaseEntityDef):
     """Explicit DFD; nodes and flow IDs are local to this diagram."""
 
     id: str = Field(min_length=1)
@@ -342,6 +358,8 @@ class DataFlowDiagramDef(BaseModel):
 class C4EAMManifest(BaseModel):
     """Root or grouped manifest document representing architecture entities."""
 
+    model_config = ConfigDict(extra="forbid")
+
     capabilities: list[BusinessCapabilityDef] = Field(default_factory=list)
     systems: list[SoftwareSystemDef] = Field(default_factory=list)
     containers: list[ContainerDef] = Field(default_factory=list)
@@ -352,4 +370,5 @@ class C4EAMManifest(BaseModel):
     plateaus: list[PlateauDef] = Field(default_factory=list)
     work_packages: list[WorkPackageDef] = Field(default_factory=list)
     data_flow_diagrams: list[DataFlowDiagramDef] = Field(default_factory=list)
+
 

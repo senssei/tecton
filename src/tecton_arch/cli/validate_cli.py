@@ -17,6 +17,7 @@ def run_validation(
     output_format: str = "table",
     require_owner: bool = False,
     as_of_date: Optional[date] = None,
+    config_path: Optional[str] = None,
 ) -> None:
     """Validate architecture DSL workspace and enforce CI/CD quality gate."""
     target_path = path.resolve()
@@ -25,16 +26,21 @@ def run_validation(
         raise typer.Exit(code=1)
 
     try:
-        app = TectonApp(target_path, as_of_date=as_of_date)
+        from tecton_arch.core.config import TectonConfig
+
+        config = TectonConfig.load(config_path=config_path, workspace_dir=target_path)
+        eff_strict = strict or config.strict
+        eff_require_owner = require_owner or config.workspace.require_owner
+        app = TectonApp(target_path, as_of_date=as_of_date, config=config, strict=eff_strict)
         graph = app.graph
-        report = app.validate(strict=False, as_of_date=as_of_date, require_owner=require_owner)
+        report = app.validate(strict=False, as_of_date=as_of_date, require_owner=eff_require_owner)
     except Exception as e:
         console.print(f"[bold red]Critical manifest parsing error: {e}[/bold red]")
         raise typer.Exit(code=1)
 
     if output_format.lower() == "json":
         data = {
-            "valid": report.valid and (report.warning_count == 0 if strict else True),
+            "valid": report.valid and (report.warning_count == 0 if eff_strict else True),
             "as_of_date": str(as_of_date) if as_of_date else None,
             "files_scanned": len(graph.files_parsed),
             "error_count": report.error_count,
@@ -51,7 +57,7 @@ def run_validation(
             ],
         }
         console.print_json(json.dumps(data))
-        if report.error_count > 0 or (strict and report.warning_count > 0):
+        if report.error_count > 0 or (eff_strict and report.warning_count > 0):
             raise typer.Exit(code=1)
         raise typer.Exit(code=0)
 
@@ -59,6 +65,8 @@ def run_validation(
     console.print("\n[bold cyan]Tecton Architecture Quality Gate & Graph Linter[/bold cyan]")
     if as_of_date:
         console.print(f"Evaluation Date: [bold magenta]{as_of_date}[/bold magenta]")
+    if eff_strict:
+        console.print("[dim yellow]Mode: Strict Quality Gate Active[/dim yellow]")
     console.print(
         f"Scanning directory: [dim]{target_path}[/dim] "
         f"({len(graph.files_parsed)} files, "
@@ -110,7 +118,7 @@ def run_validation(
         console.print("[bold red]❌ CI/CD QUALITY GATE BLOCKED: Critical errors detected in architecture graph.[/bold red]")
         raise typer.Exit(code=1)
 
-    if strict and report.warning_count > 0:
+    if eff_strict and report.warning_count > 0:
         console.print("[bold red]❌ CI/CD QUALITY GATE BLOCKED: Strict mode detected warnings.[/bold red]")
         raise typer.Exit(code=1)
 
@@ -143,6 +151,10 @@ def validate_command(
         Optional[str],
         typer.Option("--as-of-date", help="Target evaluation date (YYYY-MM-DD) for lifecycle invariants"),
     ] = None,
+    config_path: Annotated[
+        Optional[str],
+        typer.Option("--config", "-c", help="Path to tecton.yaml configuration file"),
+    ] = None,
 ) -> None:
     """Validate architecture DSL workspace and enforce referential integrity & DAG invariants."""
     eval_date = date.fromisoformat(as_of_date) if as_of_date else None
@@ -152,4 +164,6 @@ def validate_command(
         output_format=output_format,
         require_owner=require_owner,
         as_of_date=eval_date,
+        config_path=config_path,
     )
+

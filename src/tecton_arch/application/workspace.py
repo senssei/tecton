@@ -27,12 +27,24 @@ class WorkspacePort(Protocol):
 class Workspace:
     """Encapsulates file I/O, manifest parsing, and graph state for an architecture repository."""
 
-    def __init__(self, workspace_source: Any = ".") -> None:
+    def __init__(
+        self,
+        workspace_source: Any = ".",
+        config: Any = None,
+        strict: bool = False,
+    ) -> None:
+        self.config = config
+        self.strict = strict
         if isinstance(workspace_source, (str, Path)):
             self.path = Path(workspace_source).resolve()
             if not self.path.exists():
                 raise WorkspaceNotFoundError(f"Workspace path does not exist: {self.path}")
-            self._adapter = GitRepositoryAdapter(self.path)
+            if self.config is None:
+                from tecton_arch.core.config import TectonConfig
+                self.config = TectonConfig.load(workspace_dir=self.path)
+            eff_strict = strict or (self.config.strict if self.config else False)
+            self.strict = eff_strict
+            self._adapter = GitRepositoryAdapter(self.path, config=self.config, strict=eff_strict)
             self._graph: CompiledGraph | None = None
         elif hasattr(workspace_source, "fetch_applications"):
             self.path = Path(".")
@@ -45,6 +57,7 @@ class Workspace:
             self._adapter = InMemoryRepositoryAdapter(apps)
         else:
             raise TypeError(f"Unsupported workspace source: {type(workspace_source)}")
+
 
     @property
     def graph(self) -> CompiledGraph:
