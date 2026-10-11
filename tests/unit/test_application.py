@@ -21,6 +21,11 @@ def dogfood_workspace_path() -> Path:
     return Path(__file__).parents[2] / "examples" / "dogfood" / "tecton_c4_workspace"
 
 
+@pytest.fixture
+def eam_workspace_path() -> Path:
+    return Path(__file__).parents[2] / "examples" / "c4_eam_workspace"
+
+
 def test_workspace_initialization_and_reload(dogfood_workspace_path: Path):
     ws = Workspace(dogfood_workspace_path)
     assert ws.path == dogfood_workspace_path.resolve()
@@ -78,9 +83,30 @@ def test_tecton_app_facade_export_formats(dogfood_workspace_path: Path):
     assert res_backstage.format == "backstage"
     assert "backstage.io/v1alpha1" in res_backstage.content
 
-    # 4. Unknown format raises ExportError
+    # 4. Markdown Executive Report
+    res_md = app.export("markdown")
+    assert res_md.format == "markdown"
+    assert "Portfolio Executive Summary" in res_md.content
+
+    # 5. Unknown format raises ExportError
     with pytest.raises(ExportError, match="Unsupported export format"):
         app.export("unsupported-format-xyz")
+
+
+def test_tecton_app_facade_export_gantt_with_as_of_date(eam_workspace_path: Path):
+    app = TectonApp(eam_workspace_path, as_of_date=date(2025, 1, 1))
+
+    # Via TectonApp.as_of_date
+    res_gantt = app.export("mermaid", options={"diagram_type": "roadmap-gantt"})
+    assert res_gantt.format == "mermaid"
+    assert "Evaluation Date :milestone, eval_date, 2025-01-01, 0d" in res_gantt.content
+
+    # Via direct options as_of_date string
+    res_gantt_opts = app.export(
+        "mermaid",
+        options={"diagram_type": "roadmap-gantt", "as_of_date": "2024-05-01"},
+    )
+    assert "Evaluation Date :milestone, eval_date, 2024-05-01, 0d" in res_gantt_opts.content
 
 
 def test_tecton_app_facade_portal_snapshot(dogfood_workspace_path: Path):

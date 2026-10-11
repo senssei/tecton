@@ -50,6 +50,13 @@ class FileRepositoryAdapter(InMemoryRepositoryAdapter):
                         pass
                 lifecycle = Lifecycle(as_string=raw_lc.get("as_string") or raw_lc.get("asString"), phases=phases_list)
 
+            raw_phase = (
+                raw.get("current_phase")
+                or raw.get("currentPhase")
+                or (raw_lc.get("as_string") if isinstance(raw_lc, dict) else None)
+                or (raw_lc.get("asString") if isinstance(raw_lc, dict) else None)
+            )
+
             app = Application(
                 id=app_id,
                 name=name,
@@ -57,7 +64,7 @@ class FileRepositoryAdapter(InMemoryRepositoryAdapter):
                 functional_suitability=raw.get("functional_suitability") or raw.get("functionalSuitability"),
                 technical_suitability=raw.get("technical_suitability") or raw.get("technicalSuitability"),
                 time_classification=raw.get("time_classification") or raw.get("timeClassification") or "UNKNOWN",
-                current_phase=raw.get("current_phase") or raw.get("currentPhase"),
+                current_phase=raw_phase,
                 lifecycle=lifecycle,
                 capabilities=raw.get("capabilities", []),
                 user_groups=raw.get("user_groups") or raw.get("userGroups", []),

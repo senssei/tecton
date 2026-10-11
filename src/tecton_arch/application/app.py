@@ -150,8 +150,11 @@ class TectonApp:
 
     def export(self, format_name: str, options: dict[str, Any] | None = None) -> ExportResultDto:
         """Export architecture graph to the target format via the Exporter Registry."""
+        opts = dict(options or {})
+        if "as_of_date" not in opts and self.as_of_date:
+            opts["as_of_date"] = self.as_of_date
         exporter = self.exporter_registry.get(format_name)
-        return exporter.export(self.graph, options=options)
+        return exporter.export(self.graph, options=opts)
 
     def export_backstage_entities(self) -> list[dict[str, Any]]:
         """Export raw Backstage catalog entity dictionaries."""

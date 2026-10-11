@@ -1,5 +1,6 @@
 """Unit tests for GraphLinter and architectural quality gates."""
 
+from datetime import date
 import pytest
 from tecton_arch.engines.linter import GraphLinter, LintSeverity
 from tecton_arch.dsl.parser import C4EAMParser
@@ -169,3 +170,42 @@ def test_linter_detects_circular_system_dependencies_as_warning():
     assert report.is_valid is True  # Warning doesn't make report invalid by default
     assert report.warning_count >= 1
     assert any(i.rule == "CYCLE_DETECTED_DEPENDENCY" for i in report.issues)
+
+
+def test_linter_lifecycle_deterministic_with_as_of_date(monkeypatch):
+    content = """
+    systems:
+      - id: sys-legacy
+        name: Legacy System
+        lifecycle:
+          phases:
+            - phase: active
+              start_date: 2020-01-01
+            - phase: endOfLife
+              start_date: 2030-01-01
+    """
+    graph = C4EAMParser().parse_content(content)
+    target_date = date(2035, 1, 1)
+
+    class FakeDate2025(date):
+        @classmethod
+        def today(cls):
+            return date(2025, 1, 1)
+
+    monkeypatch.setattr("tecton_arch.core.models.date", FakeDate2025)
+    report_2025 = GraphLinter().lint(graph, as_of_date=target_date)
+
+    class FakeDate2035(date):
+        @classmethod
+        def today(cls):
+            return date(2035, 1, 1)
+
+    monkeypatch.setattr("tecton_arch.core.models.date", FakeDate2035)
+    report_2035 = GraphLinter().lint(graph, as_of_date=target_date)
+
+    # Lint results must be identical regardless of system clock
+    assert report_2025.warning_count == report_2035.warning_count
+    assert report_2025.error_count == report_2035.error_count
+    assert [i.rule for i in report_2025.issues] == [i.rule for i in report_2035.issues]
+    # As of 2035 the app is endOfLife, so no spurious warning about active past EOL
+    assert not any(i.rule == "LIFECYCLE_INCONSISTENCY" for i in report_2025.issues)

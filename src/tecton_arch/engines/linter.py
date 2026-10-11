@@ -359,7 +359,7 @@ class GraphLinter:
         self, graph: CompiledGraph, report: LintReport, as_of_date: date | None = None
     ) -> None:
         """Validate chronological lifecycle phase sequences."""
-        apps = graph.get_applications()
+        apps = graph.get_applications(as_of_date=as_of_date)
         validator = LifecycleValidator()
         lc_report = validator.validate_all(apps, as_of_date=as_of_date)
 

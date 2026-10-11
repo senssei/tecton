@@ -1,6 +1,7 @@
 """Markdown Living Architecture Documentation Exporter."""
 
 from collections import Counter
+from typing import Any
 from tecton_arch.core.models import Application, RedundancyCluster, TimeQuadrant
 from tecton_arch.engines.lifecycle_validator import LifecycleValidationReport
 from tecton_arch.exporters.mermaid import MermaidExporter
@@ -89,3 +90,26 @@ class MarkdownExporter:
 
         sections.append("")
         return "\n".join(sections)
+
+    @classmethod
+    def export_executive_summary(
+        cls,
+        graph_or_apps: Any,
+        as_of_date: Any = None,
+    ) -> str:
+        """Export executive APM summary for a compiled graph or workspace."""
+        if hasattr(graph_or_apps, "get_applications"):
+            from tecton_arch.adapters.in_memory import InMemoryRepositoryAdapter
+            from tecton_arch.services.apm_service import APMService
+
+            apps = graph_or_apps.get_applications(as_of_date=as_of_date)
+            repo = InMemoryRepositoryAdapter(apps)
+            service = APMService(repo)
+            result = service.analyze(as_of_date=as_of_date)
+            return cls.generate_apm_report(
+                applications=result.applications,
+                time_classifications=result.time_classifications,
+                redundancy_clusters=result.redundancy_clusters,
+                lifecycle_report=result.lifecycle_report,
+            )
+        raise ValueError("Expected CompiledGraph or object with get_applications()")

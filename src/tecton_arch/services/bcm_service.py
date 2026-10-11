@@ -1,5 +1,6 @@
 """Business Capability Management (BCM) Service orchestrator."""
 
+from datetime import date
 from pathlib import Path
 from tecton_arch.dsl.parser import C4EAMParser, CompiledGraph
 from tecton_arch.engines.bcm_engine import BCMEngine, BCMReport
@@ -16,12 +17,12 @@ class BCMService:
             self.graph = C4EAMParser().parse_directory(graph_or_path)
         self.engine = BCMEngine()
 
-    def analyze(self) -> BCMReport:
+    def analyze(self, as_of_date: date | None = None) -> BCMReport:
         """Run complete capability coverage and health assessment."""
-        apps = self.graph.get_applications()
+        apps = self.graph.get_applications(as_of_date=as_of_date)
         return self.engine.analyze(self.graph.capabilities, apps)
 
-    def export_heatmap(self, title: str = "Business Capability Realization Heatmap") -> str:
+    def export_heatmap(self, title: str = "Business Capability Realization Heatmap", as_of_date: date | None = None) -> str:
         """Generate Mermaid heatmap diagram representing capability health."""
-        report = self.analyze()
+        report = self.analyze(as_of_date=as_of_date)
         return MermaidExporter.to_capability_heatmap(report, title=title)

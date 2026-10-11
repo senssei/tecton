@@ -1,9 +1,10 @@
 """Unit tests for Repository Adapters."""
 
+from datetime import date
 from pathlib import Path
 from tecton_arch.adapters.file_adapter import FileRepositoryAdapter
 from tecton_arch.adapters.in_memory import InMemoryRepositoryAdapter
-from tecton_arch.core.models import Application, TimeQuadrant
+from tecton_arch.core.models import Application, Lifecycle, LifecyclePhase, TimeQuadrant
 
 
 def test_in_memory_adapter_crud() -> None:
@@ -42,3 +43,54 @@ def test_file_adapter_loads_fixture() -> None:
     app_names = [a.name for a in apps]
     assert "Global Salesforce CRM" in app_names
     assert "Mainframe Core Ledger" in app_names
+
+
+def test_in_memory_adapter_preserves_explicit_current_phase_when_lifecycle_has_no_phases() -> None:
+    app = Application(
+        id="app-explicit",
+        name="Explicit Phase App",
+        current_phase=LifecyclePhase.ACTIVE,
+        lifecycle=Lifecycle(phases=[]),
+    )
+    adapter = InMemoryRepositoryAdapter([app])
+    target_date = date(2025, 1, 1)
+
+    fetched = adapter.fetch_applications(as_of_date=target_date)
+    assert len(fetched) == 1
+    assert fetched[0].current_phase == LifecyclePhase.ACTIVE
+
+
+def test_file_adapter_preserves_explicit_current_phase_when_lifecycle_has_no_phases(tmp_path: Path) -> None:
+    manifest_file = tmp_path / "apps.yaml"
+    manifest_file.write_text(
+        """
+        - id: app-yaml-explicit
+          name: YAML Explicit App
+          current_phase: active
+          lifecycle:
+            phases: []
+        - id: app-yaml-string
+          name: YAML String App
+          lifecycle:
+            as_string: active
+            phases: []
+        """,
+        encoding="utf-8",
+    )
+    adapter = FileRepositoryAdapter(manifest_file)
+    target_date = date(2025, 1, 1)
+
+    fetched = adapter.fetch_applications(as_of_date=target_date)
+    assert len(fetched) == 2
+    assert fetched[0].current_phase == LifecyclePhase.ACTIVE
+    assert fetched[1].current_phase == LifecyclePhase.ACTIVE
+
+
+def test_application_phase_as_of_preserves_explicit_phase() -> None:
+    app = Application(
+        id="app-model",
+        name="Model App",
+        current_phase=LifecyclePhase.ACTIVE,
+        lifecycle=Lifecycle(phases=[]),
+    )
+    assert app.phase_as_of(date(2025, 1, 1)) == LifecyclePhase.ACTIVE

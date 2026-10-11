@@ -64,6 +64,10 @@ class Lifecycle(BaseModel):
     def phase_as_of(self, as_of_date: date | None = None) -> LifecyclePhase | None:
         """Derive active lifecycle phase based on a target evaluation date (defaults to date.today())."""
         if not self.phases:
+            if self.as_string:
+                for lp in LifecyclePhase:
+                    if lp.value.lower() == self.as_string.lower():
+                        return lp
             return None
         target = as_of_date or date.today()
         sorted_phases = sorted(self.phases, key=lambda p: p.start_date)
@@ -98,7 +102,7 @@ class Application(BaseModel):
     def phase_as_of(self, as_of_date: date | None = None) -> LifecyclePhase | None:
         """Derive active lifecycle phase as of a target date."""
         if self.lifecycle:
-            return self.lifecycle.phase_as_of(as_of_date)
+            return self.lifecycle.phase_as_of(as_of_date) or self.current_phase
         return self.current_phase
 
     @field_validator("name")

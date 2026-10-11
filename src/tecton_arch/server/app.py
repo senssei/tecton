@@ -235,14 +235,19 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
     def get_diagram(
         chart_type: str,
         data_id: Optional[str] = Query(None, description="Data Object ID for data-lineage chart"),
+        as_of: Optional[str] = Query(None, description="Target evaluation date (YYYY-MM-DD)"),
     ) -> dict[str, Any]:
         """Generate living Mermaid diagram content for external dashboards."""
+        export_opts: dict[str, Any] = {}
+        if as_of:
+            export_opts["as_of_date"] = as_of
+
         if chart_type in ("time-matrix", "time"):
-            res = tecton_app.export("mermaid", options={"diagram_type": "time-matrix"})
+            res = tecton_app.export("mermaid", options={"diagram_type": "time-matrix", **export_opts})
         elif chart_type in ("capability-heatmap", "bcm-heatmap"):
-            res = tecton_app.export("mermaid", options={"diagram_type": "bcm-heatmap"})
+            res = tecton_app.export("mermaid", options={"diagram_type": "bcm-heatmap", **export_opts})
         elif chart_type in ("tech-radar", "radar"):
-            res = tecton_app.export("mermaid", options={"diagram_type": "tech-radar"})
+            res = tecton_app.export("mermaid", options={"diagram_type": "tech-radar", **export_opts})
         elif chart_type == "data-lineage":
             if not data_id:
                 raise HTTPException(status_code=400, detail="Query parameter 'data_id' is required for chart_type 'data-lineage'")
@@ -252,7 +257,7 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
             except EntityNotFoundError as e:
                 raise HTTPException(status_code=404, detail=str(e))
         elif chart_type in ("roadmap-gantt", "gantt"):
-            res = tecton_app.export("mermaid", options={"diagram_type": "roadmap-gantt"})
+            res = tecton_app.export("mermaid", options={"diagram_type": "roadmap-gantt", **export_opts})
         else:
             raise HTTPException(
                 status_code=400,

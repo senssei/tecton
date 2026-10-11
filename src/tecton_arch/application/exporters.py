@@ -1,6 +1,7 @@
 """Unified exporter interface and registry for Tecton architecture models."""
 
 from abc import ABC, abstractmethod
+from datetime import date
 from typing import Any
 from tecton_arch.application.dto import ExportResultDto
 from tecton_arch.application.exceptions import ExportError
@@ -85,19 +86,29 @@ class MermaidExporterAdapter(Exporter):
     def export(self, graph: CompiledGraph, options: dict[str, Any] | None = None) -> ExportResultDto:
         opts = options or {}
         dtype = str(opts.get("diagram_type", "time-matrix")).lower()
+        as_of = opts.get("as_of_date")
+        if isinstance(as_of, str):
+            try:
+                as_of = date.fromisoformat(as_of)
+            except Exception:
+                as_of = None
+
         if dtype in ("time-matrix", "time"):
-            content = MermaidExporter.to_time_quadrant_chart(graph.get_applications())
-        elif dtype in ("bcm-heatmap", "bcm", "heatmap"):
+            content = MermaidExporter.to_time_quadrant_chart(graph.get_applications(as_of_date=as_of))
+        elif dtype in ("bcm-heatmap", "bcm", "heatmap", "capability-heatmap"):
             from tecton_arch.services.bcm_service import BCMService
-            content = BCMService(graph).export_heatmap()
+            title = opts.get("title", "Business Capability Realization Heatmap")
+            content = BCMService(graph).export_heatmap(title=title, as_of_date=as_of)
         elif dtype in ("tech-radar", "trm", "radar"):
             from tecton_arch.services.trm_service import TRMService
-            content = TRMService(graph).export_radar()
+            title = opts.get("title", "Technology Standards & Obsolescence Radar")
+            content = TRMService(graph).export_radar(title=title, as_of_date=as_of)
         elif dtype in ("roadmap-gantt", "roadmap", "gantt"):
             from tecton_arch.services.roadmap_service import RoadmapService
-            content = RoadmapService(graph).export_gantt()
+            title = opts.get("title", "Enterprise Architecture Transformation Roadmap")
+            content = RoadmapService(graph).export_gantt(title=title, as_of_date=as_of)
         else:
-            content = MermaidExporter.to_time_quadrant_chart(graph.get_applications())
+            content = MermaidExporter.to_time_quadrant_chart(graph.get_applications(as_of_date=as_of))
 
         return ExportResultDto(
             format=self.name,
@@ -114,7 +125,26 @@ class MarkdownExporterAdapter(Exporter):
     description = "Human-readable architecture executive report in Markdown"
 
     def export(self, graph: CompiledGraph, options: dict[str, Any] | None = None) -> ExportResultDto:
-        content = MarkdownExporter.export_executive_summary(graph)
+        opts = options or {}
+        as_of = opts.get("as_of_date")
+        if isinstance(as_of, str):
+            try:
+                as_of = date.fromisoformat(as_of)
+            except Exception:
+                as_of = None
+
+        from tecton_arch.services.apm_service import APMService
+        from tecton_arch.adapters.in_memory import InMemoryRepositoryAdapter
+        apps = graph.get_applications(as_of_date=as_of)
+        repo = InMemoryRepositoryAdapter(apps)
+        service = APMService(repo)
+        result = service.analyze(as_of_date=as_of)
+        content = MarkdownExporter.generate_apm_report(
+            applications=result.applications,
+            time_classifications=result.time_classifications,
+            redundancy_clusters=result.redundancy_clusters,
+            lifecycle_report=result.lifecycle_report,
+        )
         return ExportResultDto(
             format=self.name,
             content=content,

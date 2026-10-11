@@ -21,7 +21,9 @@ class InMemoryRepositoryAdapter(ArchitectureRepositoryPort):
         for app in self._storage.values():
             copy = app.model_copy(deep=True)
             if as_of_date:
-                copy.current_phase = copy.phase_as_of(as_of_date)
+                evaluated_phase = copy.phase_as_of(as_of_date)
+                if evaluated_phase is not None:
+                    copy.current_phase = evaluated_phase
             apps.append(copy)
         return apps
 
