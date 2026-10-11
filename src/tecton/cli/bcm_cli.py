@@ -7,7 +7,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.tree import Tree
 
-from tecton.engines.bcm_engine import CapabilityHealth
+from tecton.core.models import CapabilityHealth
 from tecton.services.bcm_service import BCMService
 
 app = typer.Typer(name="bcm", help="Business Capability Management (BCM) commands.")

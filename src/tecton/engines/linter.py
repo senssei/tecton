@@ -79,7 +79,7 @@ class GraphLinter:
     def __init__(self) -> None:
         pass
 
-    def lint(self, graph: CompiledGraph) -> LintReport:
+    def lint(self, graph: CompiledGraph, as_of_date: date | None = None) -> LintReport:
         """Execute all architectural validation passes against the compiled graph."""
         report = LintReport()
 
@@ -87,8 +87,8 @@ class GraphLinter:
         self._check_referential_integrity(graph, report)
         self._check_capability_cycles(graph, report)
         self._check_dependency_cycles(graph, report)
-        self._check_lifecycles(graph, report)
-        self._check_technology_governance(graph, report)
+        self._check_lifecycles(graph, report, as_of_date=as_of_date)
+        self._check_technology_governance(graph, report, as_of_date=as_of_date)
         self._check_roadmap_governance(graph, report)
 
         return report
@@ -298,11 +298,13 @@ class GraphLinter:
             if state.get(node, 0) == 0:
                 dfs(node, [])
 
-    def _check_lifecycles(self, graph: CompiledGraph, report: LintReport) -> None:
+    def _check_lifecycles(
+        self, graph: CompiledGraph, report: LintReport, as_of_date: date | None = None
+    ) -> None:
         """Validate chronological lifecycle phase sequences."""
         apps = graph.get_applications()
         validator = LifecycleValidator()
-        lc_report = validator.validate_all(apps)
+        lc_report = validator.validate_all(apps, as_of_date=as_of_date)
 
         for issue in lc_report.issues:
             severity = LintSeverity.ERROR if issue.severity == "ERROR" else LintSeverity.WARNING
@@ -315,9 +317,11 @@ class GraphLinter:
                 file_origin=origin,
             )
 
-    def _check_technology_governance(self, graph: CompiledGraph, report: LintReport) -> None:
+    def _check_technology_governance(
+        self, graph: CompiledGraph, report: LintReport, as_of_date: date | None = None
+    ) -> None:
         """Verify technology radar statuses and EOL dates."""
-        today = date.today()
+        today = as_of_date or date.today()
 
         # Check EOL for technologies
         for tech in graph.technologies.values():

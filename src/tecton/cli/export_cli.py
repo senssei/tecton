@@ -5,9 +5,7 @@ from typing import Annotated, Optional
 import typer
 from rich.console import Console
 
-from tecton.connectors.archimate import ArchiMateConnector
-from tecton.connectors.backstage import BackstageConnector
-from tecton.dsl.parser import C4EAMParser
+from tecton.application.app import TectonApp
 from tecton.portal.builder import PortalBuilder
 
 app = typer.Typer(name="export", help="Export architecture models to external EA ecosystems (Backstage, ArchiMate).")
@@ -29,8 +27,9 @@ def export_backstage(
 ) -> None:
     """Export architecture graph to Spotify Backstage Software Catalog YAML."""
     target_path = _resolve_source(source)
-    graph = C4EAMParser().parse_directory(target_path)
-    yaml_content = BackstageConnector.export_yaml(graph)
+    app_instance = TectonApp(target_path)
+    res = app_instance.export("backstage")
+    yaml_content = res.content
 
     if output:
         out_file = Path(output)
@@ -50,17 +49,13 @@ def export_archimate(
 ) -> None:
     """Export architecture graph to ArchiMate (Open Group standard XML or Archi native .archimate)."""
     target_path = _resolve_source(source)
-    graph = C4EAMParser().parse_directory(target_path)
+    app_instance = TectonApp(target_path)
 
     # Auto-detect format if output extension is .archimate
     selected_format = "archi" if (output and output.endswith(".archimate")) or format.lower() == "archi" else "exchange"
-
-    if selected_format == "archi":
-        content = ArchiMateConnector.export_archi_xml(graph, model_name=model_name)
-        desc = "Archi Native XML (.archimate)"
-    else:
-        content = ArchiMateConnector.export_xml(graph, model_name=model_name)
-        desc = "ArchiMate Open Exchange XML"
+    res = app_instance.export(selected_format, options={"model_name": model_name})
+    content = res.content
+    desc = "Archi Native XML (.archimate)" if selected_format == "archi" else "ArchiMate Open Exchange XML"
 
     if output:
         out_file = Path(output)
@@ -79,8 +74,9 @@ def export_archi(
 ) -> None:
     """Export architecture graph to Archi tool native format (.archimate) for direct 1-click opening via File > Open."""
     target_path = _resolve_source(source)
-    graph = C4EAMParser().parse_directory(target_path)
-    content = ArchiMateConnector.export_archi_xml(graph, model_name=model_name)
+    app_instance = TectonApp(target_path)
+    res = app_instance.export("archi", options={"model_name": model_name})
+    content = res.content
 
     if output:
         out_file = Path(output)
@@ -98,7 +94,6 @@ def export_portal(
 ) -> None:
     """Export self-contained, offline-first Architecture Intelligence Web Portal HTML bundle."""
     target_path = _resolve_source(source)
-    graph = C4EAMParser().parse_directory(target_path)
-    out_file = PortalBuilder.export_portal(graph, output_dir)
+    app_instance = TectonApp(target_path)
+    out_file = PortalBuilder.export_portal(app_instance, output_dir)
     console.print(f"[bold green]✓ Successfully exported living Architecture Portal to '{out_file}'[/bold green]")
-

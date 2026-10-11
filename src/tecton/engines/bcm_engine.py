@@ -8,18 +8,8 @@ from enum import Enum
 from typing import Any
 from pydantic import BaseModel, Field
 
-from tecton.core.models import Application, TimeQuadrant
+from tecton.core.models import Application, CapabilityHealth, TimeQuadrant
 from tecton.dsl.schema import BusinessCapabilityDef
-
-
-class CapabilityHealth(str, Enum):
-    """Aggregate health status of a business capability based on realizing systems."""
-
-    HEALTHY = "HEALTHY"        # Dominated by INVEST / TOLERATE systems
-    TOLERABLE = "TOLERABLE"    # Mixed or TOLERATE systems
-    AT_RISK = "AT_RISK"        # Dominated by ELIMINATE / MIGRATE systems or expired lifecycles
-    UNMAPPED = "UNMAPPED"      # 0 realizing systems (Blind spot / Gap)
-    UNKNOWN = "UNKNOWN"        # Realizing systems lack TIME evaluation
 
 
 class CapabilityCoverage(BaseModel):

@@ -78,3 +78,32 @@ def test_trm_engine_calculate_blast_radius():
     assert blast.highest_criticality == "MISSION_CRITICAL"
     assert blast.risk_score >= 80.0
     assert blast.total_systems_impacted == 2
+
+
+def test_trm_engine_deterministic_as_of_date():
+    content = """
+    technologies:
+      - id: tech-time-tested
+        name: Stable Platform
+        status: approved
+        eol_date: 2026-06-01
+    systems:
+      - id: sys-platform
+        name: Core App
+        technologies: [tech-time-tested]
+    """
+    graph = C4EAMParser().parse_content(content)
+    engine = TRMEngine()
+
+    # Evaluated before EOL (2026-01-01): not EOL
+    rep_before = engine.evaluate_technologies(graph, as_of_date=date(2026, 1, 1))
+    item_before = rep_before.technologies[0]
+    assert item_before.is_eol is False
+    assert rep_before.eol_count == 0
+
+    # Evaluated after EOL (2026-07-01): is EOL
+    rep_after = engine.evaluate_technologies(graph, as_of_date=date(2026, 7, 1))
+    item_after = rep_after.technologies[0]
+    assert item_after.is_eol is True
+    assert rep_after.eol_count == 1
+

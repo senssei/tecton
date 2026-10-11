@@ -75,9 +75,9 @@ class TRMEngine:
     def __init__(self) -> None:
         pass
 
-    def evaluate_technologies(self, graph: CompiledGraph) -> TRMReport:
+    def evaluate_technologies(self, graph: CompiledGraph, as_of_date: date | None = None) -> TRMReport:
         """Assess overall technology catalog and calculate usage stats."""
-        today = date.today()
+        today = as_of_date or date.today()
         items: list[TechnologyRiskItem] = []
 
         approved = 0
@@ -133,13 +133,15 @@ class TRMEngine:
             technologies=items,
         )
 
-    def calculate_blast_radius(self, technology_id: str, graph: CompiledGraph) -> BlastRadiusReport:
+    def calculate_blast_radius(
+        self, technology_id: str, graph: CompiledGraph, as_of_date: date | None = None
+    ) -> BlastRadiusReport:
         """Trace direct and cascading transitive dependency blast radius of a technology."""
         tech = graph.technologies.get(technology_id)
         if not tech:
             raise KeyError(f"Technology '{technology_id}' not found in architecture catalog")
 
-        today = date.today()
+        today = as_of_date or date.today()
         is_eol = bool(tech.eol_date and tech.eol_date < today)
 
         # 1. Directly affected systems

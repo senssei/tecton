@@ -8,16 +8,9 @@ from enum import Enum
 from typing import Any
 from pydantic import BaseModel, Field
 
+from tecton.core.models import ChangeType
 from tecton.dsl.parser import CompiledGraph
 from tecton.engines.bcm_engine import BCMEngine
-
-
-class ChangeType(str, Enum):
-    """Classification of an architectural delta."""
-
-    ADDED = "ADDED"
-    REMOVED = "REMOVED"
-    MODIFIED = "MODIFIED"
 
 
 class EntityDelta(BaseModel):
@@ -66,7 +59,7 @@ class DiffEngine:
     """Deterministic comparison engine computing architectural graph diffs."""
 
     def __init__(self) -> None:
-        from tecton.dsl.linter import GraphLinter
+        from tecton.engines.linter import GraphLinter
         self.linter = GraphLinter()
         self.bcm_engine = BCMEngine()
 

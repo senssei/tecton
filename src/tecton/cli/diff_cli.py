@@ -8,7 +8,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from tecton.engines.diff_engine import ChangeType
+from tecton.core.models import ChangeType
 from tecton.services.diff_service import DiffService
 
 console = Console()

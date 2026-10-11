@@ -6,8 +6,7 @@ import typer
 import yaml
 from rich.console import Console
 
-from tecton.connectors.archimate import ArchiMateConnector
-from tecton.connectors.backstage import BackstageConnector
+from tecton.application.app import TectonApp
 
 app = typer.Typer(name="import", help="Import external EA models (Backstage, ArchiMate) into Tecton Architecture-as-Code manifests.")
 console = Console()
@@ -25,7 +24,7 @@ def import_backstage(
         raise typer.Exit(code=1)
 
     content = source_file.read_text(encoding="utf-8")
-    manifest = BackstageConnector.import_catalog(content)
+    manifest = TectonApp().import_model("backstage", content)
 
     total_entities = sum(len(v) for v in manifest.values())
     console.print(f"[bold green]Parsed {total_entities} entities from Backstage catalog:[/bold green]")
@@ -58,7 +57,7 @@ def import_archimate(
         raise typer.Exit(code=1)
 
     content = source_file.read_text(encoding="utf-8")
-    manifest = ArchiMateConnector.import_xml(content)
+    manifest = TectonApp().import_model("archimate", content)
 
     total_entities = sum(len(v) for v in manifest.values())
     console.print(f"[bold green]Parsed {total_entities} entities from ArchiMate XML:[/bold green]")

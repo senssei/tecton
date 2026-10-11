@@ -11,32 +11,68 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
   <!-- Mermaid.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
   <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' }
+    if (typeof tailwind !== 'undefined') {
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              brand: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' }
+            }
           }
         }
+      };
+    }
+    if (typeof mermaid !== 'undefined' && mermaid && mermaid.initialize) {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: 'dark',
+        themeVariables: {
+          darkMode: true,
+          background: '#1e293b',
+          primaryColor: '#3b82f6',
+          primaryTextColor: '#f8fafc',
+          lineColor: '#64748b'
+        }
+      });
+    }
+    function safeRenderMermaid(container) {
+      if (!container) return;
+      if (typeof mermaid !== 'undefined' && mermaid && mermaid.run) {
+        try {
+          const nodes = container.querySelectorAll ? container.querySelectorAll('.mermaid') : [container];
+          if (nodes && nodes.length > 0) {
+            mermaid.run({ nodes: nodes });
+          }
+        } catch (e) {
+          console.warn("Mermaid render notice:", e);
+        }
+      } else {
+        const nodes = container.querySelectorAll ? container.querySelectorAll('.mermaid') : [container];
+        nodes.forEach(el => {
+          if (!el.classList.contains('offline-rendered')) {
+            el.classList.add('offline-rendered');
+            el.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, monospace';
+            el.style.whiteSpace = 'pre-wrap';
+            el.style.fontSize = '12px';
+            el.style.color = '#94a3b8';
+            el.style.overflowX = 'auto';
+            el.style.padding = '12px';
+          }
+        });
       }
-    };
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: 'dark',
-      themeVariables: {
-        darkMode: true,
-        background: '#1e293b',
-        primaryColor: '#3b82f6',
-        primaryTextColor: '#f8fafc',
-        lineColor: '#64748b'
-      }
-    });
+    }
   </script>
   <style>
+    /* Standalone Offline CSS Fallback for Air-Gapped Environments */
+    :root { color-scheme: dark; }
+    body { margin: 0; background-color: #020617; color: #f8fafc; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     .mermaid svg { max-width: 100%; height: auto; }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
+    .offline-rendered { border: 1px dashed #334155; border-radius: 8px; background: #090d16; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 10px 12px; }
   </style>
 </head>
 <body class="h-full flex flex-col font-sans antialiased bg-slate-950 text-slate-100">
@@ -384,7 +420,7 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
 
       // Re-trigger mermaid render on visible diagrams
       setTimeout(() => {
-        mermaid.run({ nodes: target.querySelectorAll('.mermaid') });
+        safeRenderMermaid(target);
       }, 50);
     }
 
@@ -544,7 +580,7 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
       // Trigger mermaid on current active tab
       const activeTab = document.querySelector('.tab-content.active');
       if (activeTab) {
-        setTimeout(() => mermaid.run({ nodes: activeTab.querySelectorAll('.mermaid') }), 100);
+        setTimeout(() => safeRenderMermaid(activeTab), 100);
       }
     }
 
@@ -657,13 +693,13 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
         try {
           const res = await fetch(`/api/v1/diagrams/data-lineage?data_id=${dataId}`).then(r => r.json());
           updateDiagram('mermaid-data-lineage', res.content);
-          mermaid.run({ nodes: [document.getElementById('mermaid-data-lineage')] });
+          safeRenderMermaid(document.getElementById('mermaid-data-lineage'));
         } catch (e) {
           console.error(e);
         }
       } else if (state.diagrams[`lineage-${dataId}`]) {
         updateDiagram('mermaid-data-lineage', state.diagrams[`lineage-${dataId}`]);
-        mermaid.run({ nodes: [document.getElementById('mermaid-data-lineage')] });
+        safeRenderMermaid(document.getElementById('mermaid-data-lineage'));
       }
     }
 

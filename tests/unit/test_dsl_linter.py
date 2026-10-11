@@ -1,7 +1,7 @@
 """Unit tests for GraphLinter and architectural quality gates."""
 
 import pytest
-from tecton.dsl.linter import GraphLinter, LintSeverity
+from tecton.engines.linter import GraphLinter, LintSeverity
 from tecton.dsl.parser import C4EAMParser
 
 

@@ -16,6 +16,24 @@ class TimeQuadrant(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 
+class CapabilityHealth(str, Enum):
+    """Aggregate health status of a business capability based on realizing systems."""
+
+    HEALTHY = "HEALTHY"        # Dominated by INVEST / TOLERATE systems
+    TOLERABLE = "TOLERABLE"    # Mixed or TOLERATE systems
+    AT_RISK = "AT_RISK"        # Dominated by ELIMINATE / MIGRATE systems or expired lifecycles
+    UNMAPPED = "UNMAPPED"      # 0 realizing systems (Blind spot / Gap)
+    UNKNOWN = "UNKNOWN"        # Realizing systems lack TIME evaluation
+
+
+class ChangeType(str, Enum):
+    """Classification of an architectural delta."""
+
+    ADDED = "ADDED"
+    REMOVED = "REMOVED"
+    MODIFIED = "MODIFIED"
+
+
 class LifecyclePhase(str, Enum):
     """Standard Enterprise Architecture lifecycle phases."""
 

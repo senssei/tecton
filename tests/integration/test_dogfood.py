@@ -41,7 +41,7 @@ def test_dogfood_tecton_self_governance() -> None:
 def test_dogfood_tecton_c4_workspace() -> None:
     """Verifies that Tecton's self-architecture passes the C4-Extended DSL Quality Gate."""
     from tecton.adapters.git_adapter import GitRepositoryAdapter
-    from tecton.dsl.linter import GraphLinter
+    from tecton.engines.linter import GraphLinter
     from tecton.dsl.parser import C4EAMParser
 
     c4_workspace = Path("examples/dogfood/tecton_c4_workspace")

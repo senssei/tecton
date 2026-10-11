@@ -74,3 +74,34 @@ systems:
     patches = [{"op": "replace", "path": "/time_classification", "value": "MIGRATE"}]
     with pytest.raises(Exception):
         adapter.apply_patches("sys-unknown-id", patches, dry_run=False)
+
+
+def test_git_adapter_atomic_persistence_on_write_error(tmp_path: Path, monkeypatch):
+    manifest = tmp_path / "apps.yaml"
+    manifest.write_text("""
+systems:
+  - id: sys-app1
+    name: App One
+    time_classification: INVEST
+""", encoding="utf-8")
+
+    adapter = GitRepositoryAdapter(tmp_path)
+    assert adapter.get_application("sys-app1").time_classification == TimeQuadrant.INVEST
+
+    # Simulate an atomic replace failure (e.g. permission or OS failure)
+    import os
+    def fake_replace(src, dst):
+        raise OSError("Simulated disk write failure during atomic rename")
+
+    monkeypatch.setattr(os, "replace", fake_replace)
+
+    patches = [{"op": "replace", "path": "/time_classification", "value": "ELIMINATE"}]
+    with pytest.raises(IOError, match="Simulated disk write failure"):
+        adapter.apply_patches("sys-app1", patches, dry_run=False)
+
+    # State in memory must NOT have changed to ELIMINATE
+    app = adapter.get_application("sys-app1")
+    assert app.time_classification == TimeQuadrant.INVEST
+    assert "INVEST" in manifest.read_text(encoding="utf-8")
+    assert "ELIMINATE" not in manifest.read_text(encoding="utf-8")
+

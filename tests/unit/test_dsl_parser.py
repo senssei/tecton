@@ -95,3 +95,29 @@ def test_parser_invalid_syntax_raises_value_error():
     parser = C4EAMParser()
     with pytest.raises(ValueError, match="YAML/JSON syntax error"):
         parser.parse_content(": this is invalid [yaml:")
+
+
+def test_parser_ignores_non_architecture_files_and_build_dirs(tmp_path):
+    # Valid architecture file
+    (tmp_path / "systems.yaml").write_text(
+        "systems:\n  - id: sys-valid\n    name: Valid System\n",
+        encoding="utf-8",
+    )
+    # Ignored directory
+    nm_dir = tmp_path / "node_modules" / "some_pkg"
+    nm_dir.mkdir(parents=True)
+    (nm_dir / "package.json").write_text('{"name": "ignored", "id": "ignored"}', encoding="utf-8")
+
+    # Generic file without architectural attributes or system ID prefix
+    (tmp_path / "ci_config.yaml").write_text(
+        "id: generic-job\nname: build-step\nother_key: 123\n",
+        encoding="utf-8",
+    )
+
+    parser = C4EAMParser()
+    graph = parser.parse_directory(tmp_path)
+
+    assert "sys-valid" in graph.systems
+    assert "ignored" not in graph.systems
+    assert "generic-job" not in graph.systems
+

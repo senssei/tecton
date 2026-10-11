@@ -221,13 +221,25 @@ class C4EAMParser:
             return CompiledGraph(table, parsed_files)
 
         # Sort for deterministic processing
+        ignored_dir_names = {
+            "node_modules",
+            "dist",
+            "build",
+            "venv",
+            ".venv",
+            "__pycache__",
+            ".git",
+            ".github",
+            ".pytest_cache",
+            ".ruff_cache",
+        }
         manifest_files = sorted(
             [
                 p
                 for p in path.rglob("*")
                 if p.is_file()
                 and p.suffix.lower() in (".yaml", ".yml", ".json")
-                and not any(part.startswith(".") for part in p.parts)
+                and not any(part.startswith(".") or part in ignored_dir_names for part in p.parts)
             ]
         )
 
@@ -332,5 +344,15 @@ class C4EAMParser:
             elif ("from_plateau_id" in item or "to_plateau_id" in item or "depends_on" in item) and "id" in item and "name" in item:
                 table.register_work_package(WorkPackageDef.model_validate(item), origin)
             elif "id" in item and "name" in item:
-                # Default to SoftwareSystem
-                table.register_system(SoftwareSystemDef.model_validate(item), origin)
+                is_system_like = (
+                    "functional_suitability" in item
+                    or "technical_suitability" in item
+                    or "business_criticality" in item
+                    or "time_classification" in item
+                    or "capabilities" in item
+                    or "user_groups" in item
+                    or "current_phase" in item
+                    or str(item.get("id", "")).startswith(("sys-", "system-", "app-"))
+                )
+                if is_system_like:
+                    table.register_system(SoftwareSystemDef.model_validate(item), origin)

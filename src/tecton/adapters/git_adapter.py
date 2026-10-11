@@ -37,18 +37,36 @@ class GitRepositoryAdapter(InMemoryRepositoryAdapter):
     def apply_patches(
         self, entity_id: str, patches: list[dict[str, Any]], dry_run: bool = True
     ) -> dict[str, Any]:
-        """Apply patches in-memory and optionally sync back to origin YAML file."""
-        result = super().apply_patches(entity_id, patches, dry_run=dry_run)
+        """Apply patches atomically: write to disk first, then reload graph/storage."""
+        if dry_run:
+            return super().apply_patches(entity_id, patches, dry_run=True)
 
-        if not dry_run:
-            origin_file = self.graph.symbol_origins.get(entity_id)
-            if origin_file and Path(origin_file).is_file():
-                self._persist_entity_patch(entity_id, patches, Path(origin_file))
+        app = self.get_application(entity_id)
+        if not app:
+            raise KeyError(f"Entity with ID {entity_id} not found in in-memory repository.")
 
-        return result
+        origin_file = self.graph.symbol_origins.get(entity_id)
+        if origin_file and Path(origin_file).is_file():
+            self._persist_entity_patch(entity_id, patches, Path(origin_file))
+
+        self.reload()
+
+        applied_changes = [
+            {"op": p.get("op"), "path": p.get("path", ""), "value": p.get("value"), "status": "applied"}
+            for p in patches
+        ]
+        return {
+            "entity_id": entity_id,
+            "dry_run": False,
+            "applied_count": len(patches),
+            "patches": applied_changes,
+        }
 
     def _persist_entity_patch(self, entity_id: str, patches: list[dict[str, Any]], file_path: Path) -> None:
-        """Update entity fields in the origin YAML file."""
+        """Atomically update entity fields in the origin YAML file."""
+        import os
+        import tempfile
+
         try:
             content = file_path.read_text(encoding="utf-8")
             data = yaml.safe_load(content)
@@ -73,9 +91,21 @@ class GitRepositoryAdapter(InMemoryRepositoryAdapter):
                                 item["time_classification"] = p.get("value")
                                 updated = True
 
-            if updated:
-                file_path.write_text(yaml.dump(data, sort_keys=False), encoding="utf-8")
-            else:
+            if not updated:
                 raise ValueError(f"Entity '{entity_id}' could not be matched in manifest '{file_path}'")
+
+            temp_file = None
+            try:
+                with tempfile.NamedTemporaryFile("w", dir=file_path.parent, delete=False, encoding="utf-8") as tf:
+                    temp_file = tf.name
+                    yaml.dump(data, tf, sort_keys=False)
+                os.replace(temp_file, file_path)
+            except Exception:
+                if temp_file and os.path.exists(temp_file):
+                    try:
+                        os.unlink(temp_file)
+                    except OSError:
+                        pass
+                raise
         except Exception as e:
             raise IOError(f"Failed to persist patch for entity '{entity_id}' into '{file_path}': {e}") from e

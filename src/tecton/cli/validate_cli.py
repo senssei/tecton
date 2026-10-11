@@ -7,8 +7,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from tecton.dsl.linter import GraphLinter, LintSeverity
-from tecton.dsl.parser import C4EAMParser
+from tecton.application.app import TectonApp
 
 console = Console()
 
@@ -24,25 +23,23 @@ def run_validation(
         console.print(f"[bold red]Error: Path '{target_path}' does not exist.[/bold red]")
         raise typer.Exit(code=1)
 
-    parser = C4EAMParser()
     try:
-        graph = parser.parse_directory(target_path)
+        app = TectonApp(target_path)
+        graph = app.graph
+        report = app.validate(strict=False)
     except Exception as e:
         console.print(f"[bold red]Critical manifest parsing error: {e}[/bold red]")
         raise typer.Exit(code=1)
 
-    linter = GraphLinter()
-    report = linter.lint(graph)
-
     if output_format.lower() == "json":
         data = {
-            "valid": report.is_valid and (report.warning_count == 0 if strict else True),
+            "valid": report.valid and (report.warning_count == 0 if strict else True),
             "files_scanned": len(graph.files_parsed),
             "error_count": report.error_count,
             "warning_count": report.warning_count,
             "issues": [
                 {
-                    "severity": issue.severity.value,
+                    "severity": issue.severity,
                     "rule": issue.rule,
                     "entity_id": issue.entity_id,
                     "message": issue.message,
@@ -52,7 +49,7 @@ def run_validation(
             ],
         }
         console.print_json(json.dumps(data))
-        if report.has_errors or (strict and report.warning_count > 0):
+        if report.error_count > 0 or (strict and report.warning_count > 0):
             raise typer.Exit(code=1)
         raise typer.Exit(code=0)
 
@@ -85,7 +82,7 @@ def run_validation(
     for issue in report.issues:
         sev_style = (
             "[bold red]ERROR[/bold red]"
-            if issue.severity == LintSeverity.ERROR
+            if issue.severity.upper() == "ERROR"
             else "[bold yellow]WARN[/bold yellow]"
         )
         file_display = Path(issue.file_origin).name if issue.file_origin else "-"

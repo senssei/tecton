@@ -308,3 +308,23 @@ systems:
     imported = BackstageConnector.import_catalog(backstage_out)
     assert any(s["id"] == "sys-crm-central" for s in imported["systems"])
     assert any(c["id"] == "cap-customer-support" for c in imported["capabilities"])
+
+
+def test_id_mapper_collision_detection():
+    from tecton.connectors.id_mapper import IdCollisionError, IdMapper
+    import pytest
+
+    mapper = IdMapper()
+
+    # Backstage name collision test
+    mapper.register_backstage_name("order_service")
+    with pytest.raises(IdCollisionError, match="Backstage name collision"):
+        # "order-service" normalizes to the same "order-service" name
+        mapper.register_backstage_name("order-service")
+
+    # XML ID collision test
+    mapper_xml = IdMapper()
+    mapper_xml.register_xml_id("crm:core")
+    with pytest.raises(IdCollisionError, match="XML ID collision"):
+        # "crm_core" normalizes to the same "id-crm_core"
+        mapper_xml.register_xml_id("crm_core")

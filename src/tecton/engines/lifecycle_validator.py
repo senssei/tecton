@@ -35,7 +35,9 @@ class LifecycleValidator:
         LifecyclePhase.END_OF_LIFE: 5,
     }
 
-    def validate_application(self, application: Application) -> list[LifecycleIssue]:
+    def validate_application(
+        self, application: Application, as_of_date: date | None = None
+    ) -> list[LifecycleIssue]:
         """Validate lifecycle phases of a single application."""
         issues: list[LifecycleIssue] = []
 
@@ -78,7 +80,7 @@ class LifecycleValidator:
                 )
 
         # Check if End-of-Life is in the past while application is marked active
-        today = date.today()
+        today = as_of_date or date.today()
         eol_phase = next((p for p in phases if p.phase == LifecyclePhase.END_OF_LIFE), None)
         if eol_phase and eol_phase.start_date < today:
             if application.current_phase == LifecyclePhase.ACTIVE:
@@ -96,11 +98,13 @@ class LifecycleValidator:
 
         return issues
 
-    def validate_all(self, applications: list[Application]) -> LifecycleValidationReport:
+    def validate_all(
+        self, applications: list[Application], as_of_date: date | None = None
+    ) -> LifecycleValidationReport:
         """Validate a collection of applications and aggregate issues."""
         all_issues: list[LifecycleIssue] = []
         for app in applications:
-            all_issues.extend(self.validate_application(app))
+            all_issues.extend(self.validate_application(app, as_of_date=as_of_date))
 
         errors = [i for i in all_issues if i.severity == "ERROR"]
         warnings = [i for i in all_issues if i.severity == "WARNING"]
