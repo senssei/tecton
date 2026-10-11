@@ -193,3 +193,37 @@ work_packages:
     assert "REF_INTEGRITY_DANGLING_PLATEAU_SYSTEM" in rules
     assert "ROADMAP_WORK_PACKAGE_CYCLE" in rules
     assert "REF_INTEGRITY_DANGLING_WORK_PACKAGE_SYSTEM" in rules
+
+
+def test_roadmap_engine_temporal_determinism():
+    yaml_content = """
+technologies:
+  - id: tech-db
+    name: Database
+    status: approved
+    eol_date: 2026-05-01
+
+systems:
+  - id: sys-main
+    name: Main System
+    technologies: [tech-db]
+
+plateaus:
+  - id: plat-now
+    name: Now
+    active_system_ids: [sys-main]
+"""
+    graph = C4EAMParser().parse_content(yaml_content)
+    engine = RoadmapEngine(graph)
+
+    # Before EOL
+    state_before = engine.evaluate_plateau_state("plat-now", as_of_date=date(2026, 1, 1))
+    assert state_before.deprecated_or_eol_techs_in_use == []
+
+    # After EOL
+    state_after = engine.evaluate_plateau_state("plat-now", as_of_date=date(2026, 6, 1))
+    assert state_after.deprecated_or_eol_techs_in_use == ["tech-db"]
+
+    # Gantt with evaluation milestone
+    gantt = engine.export_gantt_mermaid(as_of_date=date(2026, 4, 1))
+    assert "Evaluation Date :milestone, eval_date, 2026-04-01, 0d" in gantt

@@ -1,5 +1,6 @@
 """Architecture Repository Port (Hexagonal Architecture Interface)."""
 
+from datetime import date
 from typing import Any, Protocol, runtime_checkable
 from tecton_arch.core.models import Application
 
@@ -8,7 +9,7 @@ from tecton_arch.core.models import Application
 class ArchitectureRepositoryPort(Protocol):
     """Port for interacting with Enterprise Architecture repositories."""
 
-    def fetch_applications(self) -> list[Application]:
+    def fetch_applications(self, as_of_date: date | None = None) -> list[Application]:
         """Fetch all applications from the architecture repository."""
         ...
 

@@ -40,7 +40,7 @@ class GraphQLRepositoryAdapter(ArchitectureRepositoryPort):
             raise RuntimeError(f"GraphQL Error: {data['errors']}")
         return data.get("data", {})
 
-    def fetch_applications(self) -> list[Application]:
+    def fetch_applications(self, as_of_date: Any = None) -> list[Application]:
         """Fetch applications using standard GraphQL query with cursor-based pagination."""
         applications: list[Application] = []
         has_next_page = True

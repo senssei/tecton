@@ -53,3 +53,15 @@ def test_cli_roadmap_export_gantt(tmp_path: Path):
     assert "gantt" in content
     assert "section Plateaus" in content
     assert "section Work Packages" in content
+
+
+def test_cli_roadmap_as_of_date(tmp_path: Path):
+    out_file = tmp_path / "gantt_as_of.mmd"
+    result = runner.invoke(
+        app,
+        ["roadmap", "export-gantt", "--source", str(WORKSPACE), "-o", str(out_file), "--as-of-date", "2026-06-01"],
+    )
+    assert result.exit_code == 0
+    content = out_file.read_text(encoding="utf-8")
+    assert "Evaluation Date :milestone, eval_date, 2026-06-01, 0d" in content
+

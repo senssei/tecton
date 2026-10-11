@@ -1,5 +1,6 @@
 """Git Repository Adapter (loads architecture graph from a Git workspace directory)."""
 
+from datetime import date
 from pathlib import Path
 from typing import Any
 import yaml
@@ -33,6 +34,12 @@ class GitRepositoryAdapter(InMemoryRepositoryAdapter):
         """Reload and recompile the architecture graph from the Git workspace."""
         self.graph = self.parser.parse_directory(self.workspace_path)
         self._hydrate()
+
+    def fetch_applications(self, as_of_date: date | None = None) -> list[Application]:
+        """Fetch applications with active phases evaluated as of target date."""
+        if as_of_date:
+            return self.graph.get_applications(as_of_date=as_of_date)
+        return super().fetch_applications()
 
     def apply_patches(
         self, entity_id: str, patches: list[dict[str, Any]], dry_run: bool = True

@@ -120,7 +120,7 @@ class RoadmapEngine:
         # If date-ordered is feasible without breaking predecessor order, plateaus follow sequence
         return [self.graph.plateaus[pid] for pid in ordered]
 
-    def evaluate_plateau_state(self, plateau_id: str) -> PlateauState:
+    def evaluate_plateau_state(self, plateau_id: str, as_of_date: date | None = None) -> PlateauState:
         """Evaluate active systems, realized capabilities, and technology footprint for a plateau."""
         plateau = self.graph.plateaus.get(plateau_id)
         if not plateau:
@@ -130,7 +130,7 @@ class RoadmapEngine:
         if plateau.active_system_ids:
             active_systems = [s for s in plateau.active_system_ids if s in self.graph.systems]
         elif plateau.previous_plateau_id and plateau.previous_plateau_id in self.graph.plateaus:
-            prev_state = self.evaluate_plateau_state(plateau.previous_plateau_id)
+            prev_state = self.evaluate_plateau_state(plateau.previous_plateau_id, as_of_date=as_of_date)
             decom_set = set(plateau.decommissioned_system_ids)
             active_systems = [s for s in prev_state.active_system_ids if s not in decom_set]
         else:
@@ -142,6 +142,7 @@ class RoadmapEngine:
         covered_caps: set[str] = set()
         technologies_used: set[str] = set()
         deprecated_or_eol_techs: set[str] = set()
+        eval_date = as_of_date or plateau.target_date or date.today()
 
         for s_id in active_systems:
             sys_def = self.graph.systems.get(s_id)
@@ -156,7 +157,7 @@ class RoadmapEngine:
                     tech_def = self.graph.technologies[tech_id]
                     if (
                         tech_def.status in (TechnologyStatus.DEPRECATED, TechnologyStatus.PROHIBITED)
-                        or (tech_def.eol_date and tech_def.eol_date <= date.today())
+                        or (tech_def.eol_date and tech_def.eol_date <= eval_date)
                     ):
                         deprecated_or_eol_techs.add(tech_id)
 
@@ -176,10 +177,10 @@ class RoadmapEngine:
             deprecated_or_eol_techs_in_use=sorted(deprecated_or_eol_techs),
         )
 
-    def compare_plateaus(self, from_plateau_id: str, to_plateau_id: str) -> PlateauComparison:
+    def compare_plateaus(self, from_plateau_id: str, to_plateau_id: str, as_of_date: date | None = None) -> PlateauComparison:
         """Compare two architecture plateaus (e.g. As-Is vs To-Be) and compute delta metrics."""
-        from_state = self.evaluate_plateau_state(from_plateau_id)
-        to_state = self.evaluate_plateau_state(to_plateau_id)
+        from_state = self.evaluate_plateau_state(from_plateau_id, as_of_date=as_of_date)
+        to_state = self.evaluate_plateau_state(to_plateau_id, as_of_date=as_of_date)
 
         from_sys = set(from_state.active_system_ids)
         to_sys = set(to_state.active_system_ids)
@@ -224,10 +225,10 @@ class RoadmapEngine:
             net_capability_gain=len(gained_caps) - len(lost_caps),
         )
 
-    def analyze_roadmap(self) -> RoadmapAnalysisReport:
+    def analyze_roadmap(self, as_of_date: Optional[date] = None) -> RoadmapAnalysisReport:
         """Perform comprehensive roadmap validation, gap analysis, and progress audit."""
         ordered_plateaus = self.get_ordered_plateaus()
-        plateau_states = [self.evaluate_plateau_state(p.id) for p in ordered_plateaus]
+        plateau_states = [self.evaluate_plateau_state(p.id, as_of_date=as_of_date) for p in ordered_plateaus]
 
         status_counts: dict[str, int] = {
             WorkPackageStatus.PLANNED.value: 0,
@@ -275,8 +276,13 @@ class RoadmapEngine:
             issues=issues,
         )
 
-    def export_gantt_mermaid(self, title: str = "Enterprise Architecture Transformation Roadmap") -> str:
+    def export_gantt_mermaid(
+        self,
+        title: str = "Enterprise Architecture Transformation Roadmap",
+        as_of_date: date | None = None,
+    ) -> str:
         """Export Mermaid Gantt diagram visualizing plateaus milestones and work package schedule."""
+        today_val = as_of_date or date.today()
         lines: list[str] = [
             "gantt",
             f"    title {title}",
@@ -288,8 +294,10 @@ class RoadmapEngine:
         ordered_plateaus = self.get_ordered_plateaus()
         if ordered_plateaus:
             lines.append("    section Plateaus")
+            if as_of_date:
+                lines.append(f"    Evaluation Date :milestone, eval_date, {as_of_date}, 0d")
             for p in ordered_plateaus:
-                date_str = str(p.target_date) if p.target_date else str(date.today())
+                date_str = str(p.target_date) if p.target_date else str(today_val)
                 safe_name = p.name.replace(":", " -")
                 lines.append(f"    {safe_name} :milestone, {p.id}, {date_str}, 0d")
 
@@ -328,6 +336,6 @@ class RoadmapEngine:
                 elif wp.start_date:
                     lines.append(f"    {safe_name} :{status_modifier}{wp.id}, {wp.start_date}, 30d")
                 else:
-                    lines.append(f"    {safe_name} :{status_modifier}{wp.id}, {date.today()}, 30d")
+                    lines.append(f"    {safe_name} :{status_modifier}{wp.id}, {today_val}, 30d")
 
         return "\n".join(lines)

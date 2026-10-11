@@ -59,18 +59,22 @@ class Lifecycle(BaseModel):
     as_string: str | None = None
     phases: list[LifecyclePhaseDate] = Field(default_factory=list)
 
-    @property
-    def current_phase(self) -> LifecyclePhase | None:
-        """Derive active lifecycle phase based on today's date if phases are present."""
+    def phase_as_of(self, as_of_date: date | None = None) -> LifecyclePhase | None:
+        """Derive active lifecycle phase based on a target evaluation date (defaults to date.today())."""
         if not self.phases:
             return None
-        today = date.today()
+        target = as_of_date or date.today()
         sorted_phases = sorted(self.phases, key=lambda p: p.start_date)
         active: LifecyclePhase | None = None
         for p in sorted_phases:
-            if p.start_date <= today:
+            if p.start_date <= target:
                 active = p.phase
         return active or sorted_phases[0].phase
+
+    @property
+    def current_phase(self) -> LifecyclePhase | None:
+        """Derive active lifecycle phase based on today's date if phases are present."""
+        return self.phase_as_of()
 
 
 class Application(BaseModel):
@@ -88,6 +92,12 @@ class Application(BaseModel):
     user_groups: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    def phase_as_of(self, as_of_date: date | None = None) -> LifecyclePhase | None:
+        """Derive active lifecycle phase as of a target date."""
+        if self.lifecycle:
+            return self.lifecycle.phase_as_of(as_of_date)
+        return self.current_phase
 
     @field_validator("name")
     @classmethod

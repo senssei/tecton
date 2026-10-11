@@ -1,5 +1,4 @@
-"""CLI subcommands for Open EA Exporters (export)."""
-
+from datetime import date
 from pathlib import Path
 from typing import Annotated, Optional
 import typer
@@ -91,9 +90,11 @@ def export_archi(
 def export_portal(
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
     output_dir: Annotated[str, typer.Option("--output-dir", "-o", help="Target directory for generated portal (defaults to dist/)")] = "dist",
+    as_of_date: Annotated[Optional[str], typer.Option("--as-of-date", help="Target evaluation date (YYYY-MM-DD) for snapshot")] = None,
 ) -> None:
     """Export Architecture Intelligence Web Portal HTML snapshot (visual assets use CDNs)."""
     target_path = _resolve_source(source)
-    app_instance = TectonApp(target_path)
-    out_file = PortalBuilder.export_portal(app_instance, output_dir)
+    eval_date = date.fromisoformat(as_of_date) if as_of_date else None
+    app_instance = TectonApp(target_path, as_of_date=eval_date)
+    out_file = PortalBuilder.export_portal(app_instance, output_dir, as_of_date=eval_date)
     console.print(f"[bold green]✓ Successfully exported living Architecture Portal to '{out_file}'[/bold green]")

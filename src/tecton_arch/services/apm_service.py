@@ -1,5 +1,6 @@
 """APM Service orchestrating portfolio analytics, engines, and repository mutations."""
 
+from datetime import date
 from typing import Any
 from pydantic import BaseModel, Field
 from tecton_arch.adapters.base import ArchitectureRepositoryPort
@@ -12,6 +13,7 @@ from tecton_arch.engines.time_scoring import TimeScoringEngine
 class APMAnalysisResult(BaseModel):
     """Aggregate result of comprehensive APM evaluation."""
 
+    as_of_date: date | None = None
     applications: list[Application]
     time_classifications: dict[str, TimeQuadrant]
     redundancy_clusters: list[RedundancyCluster]
@@ -34,16 +36,16 @@ class APMService:
         self.redundancy_engine = RedundancyDetectionEngine(redundancy_config)
         self.lifecycle_validator = LifecycleValidator()
 
-    def get_applications(self) -> list[Application]:
+    def get_applications(self, as_of_date: date | None = None) -> list[Application]:
         """Fetch all applications from underlying repository."""
-        return self.repository.fetch_applications()
+        return self.repository.fetch_applications(as_of_date=as_of_date)
 
-    def analyze(self) -> APMAnalysisResult:
+    def analyze(self, as_of_date: date | None = None) -> APMAnalysisResult:
         """Execute full portfolio analysis (TIME, Redundancy, Lifecycle)."""
-        apps = self.repository.fetch_applications()
+        apps = self.repository.fetch_applications(as_of_date=as_of_date)
         time_map = self.time_engine.evaluate_all(apps)
         redundancies = self.redundancy_engine.find_redundancies(apps)
-        lifecycle_rep = self.lifecycle_validator.validate_all(apps)
+        lifecycle_rep = self.lifecycle_validator.validate_all(apps, as_of_date=as_of_date)
 
         # Calculate patches needed to align repository with evaluated TIME model
         proposed_patches: dict[str, list[dict[str, Any]]] = {}
@@ -57,6 +59,7 @@ class APMService:
                 total_patch_count += 1
 
         return APMAnalysisResult(
+            as_of_date=as_of_date,
             applications=apps,
             time_classifications=time_map,
             redundancy_clusters=redundancies,

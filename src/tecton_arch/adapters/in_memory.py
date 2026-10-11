@@ -1,5 +1,6 @@
 """In-memory Repository Adapter for offline execution, testing, and CI/CD."""
 
+from datetime import date
 from typing import Any
 from tecton_arch.adapters.base import ArchitectureRepositoryPort
 from tecton_arch.core.models import Application, TimeQuadrant
@@ -14,9 +15,15 @@ class InMemoryRepositoryAdapter(ArchitectureRepositoryPort):
             for app in applications:
                 self._storage[app.id] = app.model_copy(deep=True)
 
-    def fetch_applications(self) -> list[Application]:
-        """Return all applications stored in memory."""
-        return [app.model_copy(deep=True) for app in self._storage.values()]
+    def fetch_applications(self, as_of_date: date | None = None) -> list[Application]:
+        """Return all applications stored in memory, evaluating active phase as of target date if supplied."""
+        apps: list[Application] = []
+        for app in self._storage.values():
+            copy = app.model_copy(deep=True)
+            if as_of_date:
+                copy.current_phase = copy.phase_as_of(as_of_date)
+            apps.append(copy)
+        return apps
 
     def get_application(self, app_id: str) -> Application | None:
         """Get an application by its ID."""

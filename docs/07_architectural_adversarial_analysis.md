@@ -16,30 +16,27 @@ been resolved. It is an engineering assessment, not a production readiness certi
 | Broad parsing included generated/hidden content | Hidden and common build/dependency paths are excluded | Parser unit tests |
 | Static/live portal application payloads diverged | Shared application serialization includes owners and child components | Pilot/portal tests |
 | Portal loaded external network assets | Bundled offline assets include D3 7.9.0, Mermaid 10.9.8, and Tailwind CSS 3.4.17 runtime with zero CDN requests | Browser offline tests (`tests/browser/test_radar.py`) and distribution checks |
+| Partial time determinism | Global `as_of_date` temporal evaluation injected across domain models (`phase_as_of`), engines, application DTOs, CLI subcommands (`validate`, `trm`, `apm`, `roadmap`, `export portal`), and REST API | `tests/unit/test_roadmap_engine.py`, `tests/unit/test_application.py`, `tests/integration/test_server.py`, `test_validate_cli.py`, `test_trm_cli.py`, `test_roadmap_cli.py` |
 
 These changes do not eliminate all coupling, mutation or ingestion risks.
 
 ## Remaining limits
 
-1. **Partial time determinism.** Linter, lifecycle validation and TRM support
-   selected `as_of_date` parameters. Lifecycle phase inference, roadmap rendering
-   and Git diff do not share a global injected evaluation date. The CLI does not
-   expose one, and DTOs do not consistently record an evaluation date.
-2. **Concrete graph coupling.** Services/engines use `CompiledGraph`, and an
+1. **Concrete graph coupling.** Services/engines use `CompiledGraph`, and an
    application-only repository does not supply a complete EAM graph. Facade
    methods mix typed DTOs and dictionaries.
-3. **Persistence boundaries.** Supported writes are TIME updates in certain
+2. **Persistence boundaries.** Supported writes are TIME updates in certain
    manifest layouts. Replacement is atomic for one file; a later reload failure
    or multiple updates do not have a transactional rollback guarantee. General
    JSON Patch semantics, concurrent-write locking and formatting preservation
    are not provided.
-4. **Discovery and schema strictness.** Entity-like JSON/YAML can still be
+3. **Discovery and schema strictness.** Entity-like JSON/YAML can still be
    inferred, unknown fields are generally ignored, and an empty workspace passes.
    Explicit workspace paths and reviewed manifests remain necessary.
-5. **Local API access.** Read endpoints are unauthenticated. Optional token
+4. **Local API access.** Read endpoints are unauthenticated. Optional token
    checking applies only to reload. `--reload` currently has no file-watching
    effect. Production hosting needs external access controls and a refresh plan.
-6. **Interchange coverage.** Connectors map supported entities and preserve IDs
+5. **Interchange coverage.** Connectors map supported entities and preserve IDs
    through annotations/properties. Field-complete round trips, external XSD
    validation and arbitrary tool compatibility are not established.
 

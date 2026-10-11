@@ -2,6 +2,7 @@
 
 import json
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from typing import Any
 import yaml
@@ -211,9 +212,9 @@ class CompiledGraph:
     def incoming_relationships(self, target_id: str) -> list[RelationshipDef]:
         return self._incoming_index.get(target_id, [])
 
-    def get_applications(self) -> list[Application]:
-        """Convert all SoftwareSystems into core Application models."""
-        return [sys.to_application() for sys in self.table.systems.values()]
+    def get_applications(self, as_of_date: date | None = None) -> list[Application]:
+        """Convert all SoftwareSystems into core Application models as of target date."""
+        return [sys.to_application(as_of_date=as_of_date) for sys in self.table.systems.values()]
 
 
 class C4EAMParser:

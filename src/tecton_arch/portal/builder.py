@@ -19,14 +19,14 @@ class PortalBuilder:
         return cls._template().replace("__DATA_PAYLOAD__", "null")
 
     @classmethod
-    def build_static_portal_html(cls, app_or_graph: Any) -> str:
+    def build_static_portal_html(cls, app_or_graph: Any, as_of_date: Any = None) -> str:
         """Generate HTML snapshot with embedded model data and CDN-hosted visual assets with pre-baked JSON graph payload."""
         if isinstance(app_or_graph, TectonApp):
             app = app_or_graph
         else:
-            app = TectonApp(app_or_graph)
+            app = TectonApp(app_or_graph, as_of_date=as_of_date)
 
-        payload = app.portal_snapshot()
+        payload = app.portal_snapshot(as_of_date=as_of_date)
 
         # Sanitize serialized JSON against script injection / breakout (e.g., </script>)
         serialized_data = (
@@ -38,12 +38,12 @@ class PortalBuilder:
         return cls._template().replace("__DATA_PAYLOAD__", serialized_data)
 
     @classmethod
-    def export_portal(cls, app_or_graph: Any, output_dir: Path | str) -> Path:
+    def export_portal(cls, app_or_graph: Any, output_dir: Path | str, as_of_date: Any = None) -> Path:
         """Export static portal bundle to target directory."""
         target = Path(output_dir)
         target.mkdir(parents=True, exist_ok=True)
         html_file = target / "index.html"
-        html_content = cls.build_static_portal_html(app_or_graph)
+        html_content = cls.build_static_portal_html(app_or_graph, as_of_date=as_of_date)
         html_file.write_text(html_content, encoding="utf-8")
         return html_file
 

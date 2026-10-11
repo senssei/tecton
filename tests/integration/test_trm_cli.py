@@ -35,3 +35,16 @@ def test_cli_trm_export_radar():
     assert result.exit_code == 0
     assert "flowchart LR" in result.output
     assert "classDef approved" in result.output
+
+
+def test_cli_trm_list_as_of_date():
+    workspace = Path(__file__).parents[2] / "examples" / "c4_eam_workspace"
+    # Solaris EOL is 2024-01-01
+    result_before = runner.invoke(app, ["trm", "list", "--source", str(workspace), "--as-of-date", "2023-01-01"])
+    assert result_before.exit_code == 0
+    assert "0 past EOL" in result_before.output
+
+    result_after = runner.invoke(app, ["trm", "list", "--source", str(workspace), "--as-of-date", "2025-01-01"])
+    assert result_after.exit_code == 0
+    assert "1 past EOL" in result_after.output
+

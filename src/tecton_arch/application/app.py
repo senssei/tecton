@@ -36,11 +36,12 @@ from tecton_arch.services.trm_service import TRMService
 class TectonApp:
     """Central facade orchestrating Architecture Intelligence use cases."""
 
-    def __init__(self, workspace: Workspace | Path | str = ".") -> None:
+    def __init__(self, workspace: Workspace | Path | str = ".", as_of_date: date | None = None) -> None:
         if isinstance(workspace, Workspace):
             self.workspace = workspace
         else:
             self.workspace = Workspace(workspace)
+        self.as_of_date = as_of_date
         self.exporter_registry = ExporterRegistry.default()
 
     @property
@@ -76,10 +77,11 @@ class TectonApp:
 
     def overview(self, as_of_date: date | None = None) -> OverviewDto:
         """Calculate executive summary across APM, BCM, TRM, and Quality Gate."""
+        eval_date = as_of_date or self.as_of_date
         graph = self.graph
-        linter_report = GraphLinter().lint(graph, as_of_date=as_of_date)
+        linter_report = GraphLinter().lint(graph, as_of_date=eval_date)
         bcm_report = BCMService(graph).analyze()
-        trm_report = TRMService(graph).evaluate_technologies(as_of_date=as_of_date)
+        trm_report = TRMService(graph).evaluate_technologies(as_of_date=eval_date)
 
         return OverviewDto(
             version=__version__,
@@ -97,12 +99,14 @@ class TectonApp:
             total_data_objects=len(graph.data_objects),
             total_plateaus=len(graph.plateaus),
             total_work_packages=len(graph.work_packages),
+            as_of_date=str(eval_date) if eval_date else None,
         )
 
     def validate(self, strict: bool = False, as_of_date: date | None = None, *, require_owner: bool = False) -> ValidationReportDto:
         """Run architecture quality gate and graph linter."""
+        eval_date = as_of_date or self.as_of_date
         graph = self.graph
-        report = GraphLinter().lint(graph, as_of_date=as_of_date, require_owner=require_owner)
+        report = GraphLinter().lint(graph, as_of_date=eval_date, require_owner=require_owner)
 
         dto_issues = [
             ValidationIssueDto(
@@ -119,6 +123,7 @@ class TectonApp:
             valid=report.is_valid and (report.warning_count == 0 if strict else True),
             error_count=report.error_count,
             warning_count=report.warning_count,
+            as_of_date=str(eval_date) if eval_date else None,
             issues=dto_issues,
         )
 
@@ -150,9 +155,10 @@ class TectonApp:
         else:
             raise ValueError(f"Unsupported import format: '{format_name}'. Supported: backstage, archimate")
 
-    def apm_applications(self) -> list[dict[str, Any]]:
+    def apm_applications(self, as_of_date: date | None = None) -> list[dict[str, Any]]:
         """List application portfolio with Gartner TIME classifications and metrics."""
-        apps = self.workspace.adapter.fetch_applications()
+        eval_date = as_of_date or self.as_of_date
+        apps = self.workspace.adapter.fetch_applications(as_of_date=eval_date)
         service = APMService(self.workspace.adapter)
         time_map = service.time_engine.evaluate_all(apps)
         graph = self.workspace.optional_graph
@@ -183,14 +189,16 @@ class TectonApp:
             for app in sorted(apps, key=lambda a: a.name)
         ]
 
-    def apm_analysis(self) -> dict[str, Any]:
+    def apm_analysis(self, as_of_date: date | None = None) -> dict[str, Any]:
         """Execute full deterministic APM evaluation (TIME, Redundancy, Lifecycle)."""
         from collections import Counter
+        eval_date = as_of_date or self.as_of_date
         service = APMService(self.workspace.adapter)
-        result = service.analyze()
+        result = service.analyze(as_of_date=eval_date)
         counts = Counter(result.time_classifications.values())
         return {
             "total_applications": len(result.applications),
+            "as_of_date": str(eval_date) if eval_date else None,
             "time_distribution": {k.value: v for k, v in counts.items()},
             "redundancy_clusters": [
                 {
@@ -272,8 +280,9 @@ class TectonApp:
 
     def trm_evaluation(self, as_of_date: date | None = None) -> dict[str, Any]:
         """Run Technology Radar & Risk Management (TRM) evaluation."""
+        eval_date = as_of_date or self.as_of_date
         service = TRMService(self.graph)
-        report = service.evaluate_technologies(as_of_date=as_of_date)
+        report = service.evaluate_technologies(as_of_date=eval_date)
         result = report.model_dump(mode="json")
         result["technologies"] = self._radar_technologies(report)
         return result
@@ -295,9 +304,10 @@ class TectonApp:
 
     def trm_blast_radius(self, tech_id: str, as_of_date: date | None = None) -> dict[str, Any]:
         """Calculate blast radius and cascade failure impact for a technology."""
+        eval_date = as_of_date or self.as_of_date
         service = TRMService(self.graph)
         try:
-            report = service.calculate_blast_radius(tech_id, as_of_date=as_of_date)
+            report = service.calculate_blast_radius(tech_id, as_of_date=eval_date)
             return report.model_dump()
         except KeyError as e:
             raise EntityNotFoundError(f"Technology '{tech_id}' not found in architecture catalog") from e
@@ -351,16 +361,24 @@ class TectonApp:
             for w in service.list_work_packages()
         ]
 
-    def roadmap_analysis(self) -> dict[str, Any]:
+    def roadmap_analysis(self, as_of_date: date | None = None) -> dict[str, Any]:
         """Analyze transition plateaus and work packages."""
+        eval_date = as_of_date or self.as_of_date
         service = RoadmapService(self.graph)
-        return service.analyze().model_dump()
+        return service.analyze(as_of_date=eval_date).model_dump()
 
-    def roadmap_compare(self, from_plateau: str, to_plateau: str) -> dict[str, Any]:
+    def roadmap_compare(self, from_plateau: str, to_plateau: str, as_of_date: date | None = None) -> dict[str, Any]:
         """Compare architectural delta between two roadmap plateaus."""
+        eval_date = as_of_date or self.as_of_date
         service = RoadmapService(self.graph)
-        comp = service.compare_plateaus(from_plateau, to_plateau)
+        comp = service.compare_plateaus(from_plateau, to_plateau, as_of_date=eval_date)
         return comp.model_dump()
+
+    def roadmap_gantt(self, title: str = "Enterprise Architecture Transformation Roadmap", as_of_date: date | None = None) -> str:
+        """Export Mermaid Gantt chart visualizing plateaus and transformation initiatives."""
+        eval_date = as_of_date or self.as_of_date
+        service = RoadmapService(self.graph)
+        return service.export_gantt(title=title, as_of_date=eval_date)
 
     def diff_directories(self, base_path: Path | str, head_path: Path | str) -> ArchitectureDiffReport:
         """Run semantic diff between two directories."""
@@ -374,20 +392,21 @@ class TectonApp:
             repo_root=self.workspace.path,
         )
 
-    def portal_snapshot(self) -> dict[str, Any]:
+    def portal_snapshot(self, as_of_date: date | None = None) -> dict[str, Any]:
         """Compute complete, pre-calculated snapshot payload for offline and online portals."""
+        eval_date = as_of_date or self.as_of_date
         graph = self.graph
-        apps = self.workspace.adapter.fetch_applications()
+        apps = self.workspace.adapter.fetch_applications(as_of_date=eval_date)
         bcm_report = BCMService(graph).analyze()
-        trm_report = TRMService(graph).evaluate_technologies()
+        trm_report = TRMService(graph).evaluate_technologies(as_of_date=eval_date)
         roadmap_service = RoadmapService(graph)
 
         lineage_service = LineageService(graph)
         diagrams = {
             "time-matrix": MermaidExporter.to_time_quadrant_chart(apps),
             "bcm-heatmap": BCMService(graph).export_heatmap(),
-            "tech-radar": TRMService(graph).export_radar(),
-            "roadmap-gantt": roadmap_service.export_gantt(),
+            "tech-radar": TRMService(graph).export_radar(as_of_date=eval_date),
+            "roadmap-gantt": roadmap_service.export_gantt(as_of_date=eval_date),
         }
         for do_id in graph.data_objects:
             try:
@@ -397,7 +416,7 @@ class TectonApp:
 
         trm_service = TRMService(graph)
         blast_reports = {
-            t_id: trm_service.calculate_blast_radius(t_id).model_dump()
+            t_id: trm_service.calculate_blast_radius(t_id, as_of_date=eval_date).model_dump()
             for t_id in graph.technologies
         }
 
@@ -406,13 +425,14 @@ class TectonApp:
         for source in plateaus:
             for target in plateaus:
                 if source.id != target.id:
-                    comparisons[f"{source.id}_{target.id}"] = roadmap_service.compare_plateaus(source.id, target.id).model_dump()
+                    comparisons[f"{source.id}_{target.id}"] = roadmap_service.compare_plateaus(source.id, target.id, as_of_date=eval_date).model_dump()
 
         return {
             "version": __version__,
-            "overview": self.overview().model_dump(),
-            "validation": self.validate().model_dump(),
-            "applications": self.apm_applications(),
+            "as_of_date": str(eval_date) if eval_date else None,
+            "overview": self.overview(as_of_date=eval_date).model_dump(),
+            "validation": self.validate(as_of_date=eval_date).model_dump(),
+            "applications": self.apm_applications(as_of_date=eval_date),
             "capabilities": self.bcm_capabilities(),
             "coverage": {
                 "coverages": {

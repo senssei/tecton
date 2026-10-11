@@ -191,8 +191,10 @@ class MermaidExporter:
         plateaus: list[PlateauDef],
         work_packages: list[WorkPackageDef],
         title: str = "Enterprise Architecture Transformation Roadmap",
+        as_of_date: date | None = None,
     ) -> str:
         """Generate a Mermaid Gantt diagram visualizing plateaus milestones and work package schedule."""
+        today_val = as_of_date or date.today()
         lines: list[str] = [
             "gantt",
             f"    title {title}",
@@ -202,8 +204,10 @@ class MermaidExporter:
 
         if plateaus:
             lines.append("    section Plateaus")
+            if as_of_date:
+                lines.append(f"    Evaluation Date :milestone, eval_date, {as_of_date}, 0d")
             for p in plateaus:
-                date_str = str(p.target_date) if p.target_date else str(date.today())
+                date_str = str(p.target_date) if p.target_date else str(today_val)
                 safe_name = p.name.replace(":", " -")
                 lines.append(f"    {safe_name} :milestone, {p.id}, {date_str}, 0d")
 
@@ -238,7 +242,7 @@ class MermaidExporter:
                 elif wp.start_date:
                     lines.append(f"    {safe_name} :{status_modifier}{wp.id}, {wp.start_date}, 30d")
                 else:
-                    lines.append(f"    {safe_name} :{status_modifier}{wp.id}, {date.today()}, 30d")
+                    lines.append(f"    {safe_name} :{status_modifier}{wp.id}, {today_val}, 30d")
 
         return "\n".join(lines)
 

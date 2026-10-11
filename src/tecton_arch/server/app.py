@@ -4,6 +4,7 @@ Exposes REST API endpoints for APM, BCM, TRM, Data Lineage, Graph Linting,
 and living Mermaid diagram export.
 """
 
+from datetime import date
 import os
 from pathlib import Path
 from typing import Any, Optional
@@ -49,6 +50,7 @@ class OverviewResponse(BaseModel):
     total_data_objects: int
     total_plateaus: int = 0
     total_work_packages: int = 0
+    as_of_date: Optional[str] = None
 
 
 def create_app(workspace_path: Path | str = ".") -> FastAPI:
@@ -90,9 +92,11 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
         return HealthResponse(**dto.model_dump())
 
     @app.get("/api/v1/overview", response_model=OverviewResponse, tags=["System"])
-    def get_overview() -> OverviewResponse:
+    def get_overview(
+        as_of_date: Optional[date] = Query(None, description="Target evaluation date (YYYY-MM-DD)"),
+    ) -> OverviewResponse:
         """Return executive summary across all architectural dimensions."""
-        dto = tecton_app.overview()
+        dto = tecton_app.overview(as_of_date=as_of_date)
         return OverviewResponse(**dto.model_dump())
 
     @app.post("/api/v1/reload", tags=["System"])
@@ -106,11 +110,14 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
         return tecton_app.reload()
 
     @app.get("/api/v1/validate", tags=["Quality Gate"])
-    def validate_architecture() -> dict[str, Any]:
+    def validate_architecture(
+        as_of_date: Optional[date] = Query(None, description="Target evaluation date (YYYY-MM-DD)"),
+    ) -> dict[str, Any]:
         """Run architecture quality gate and graph linter."""
-        report = tecton_app.validate(strict=False)
+        report = tecton_app.validate(strict=False, as_of_date=as_of_date)
         return {
             "valid": report.valid,
+            "as_of_date": str(as_of_date) if as_of_date else None,
             "error_count": report.error_count,
             "warning_count": report.warning_count,
             "issues": [
@@ -127,14 +134,18 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
 
     # --- APM Endpoints ---
     @app.get("/api/v1/apm/applications", tags=["APM"])
-    def list_apm_applications() -> list[dict[str, Any]]:
+    def list_apm_applications(
+        as_of_date: Optional[date] = Query(None, description="Target evaluation date (YYYY-MM-DD)"),
+    ) -> list[dict[str, Any]]:
         """List application portfolio with Gartner TIME classifications and metrics."""
-        return tecton_app.apm_applications()
+        return tecton_app.apm_applications(as_of_date=as_of_date)
 
     @app.get("/api/v1/apm/analysis", tags=["APM"])
-    def analyze_apm_portfolio() -> dict[str, Any]:
+    def analyze_apm_portfolio(
+        as_of_date: Optional[date] = Query(None, description="Target evaluation date (YYYY-MM-DD)"),
+    ) -> dict[str, Any]:
         """Execute full deterministic APM evaluation (TIME, Redundancy, Lifecycle)."""
-        return tecton_app.apm_analysis()
+        return tecton_app.apm_analysis(as_of_date=as_of_date)
 
     # --- BCM Endpoints ---
     @app.get("/api/v1/bcm/capabilities", tags=["BCM"])
@@ -149,15 +160,20 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
 
     # --- TRM Endpoints ---
     @app.get("/api/v1/trm/technologies", tags=["TRM"])
-    def list_technologies() -> dict[str, Any]:
+    def list_technologies(
+        as_of_date: Optional[date] = Query(None, description="Target evaluation date (YYYY-MM-DD)"),
+    ) -> dict[str, Any]:
         """List technology standards, obsolescence status, and adoption counts."""
-        return tecton_app.trm_evaluation()
+        return tecton_app.trm_evaluation(as_of_date=as_of_date)
 
     @app.get("/api/v1/trm/blast-radius/{technology_id}", tags=["TRM"])
-    def get_technology_blast_radius(technology_id: str) -> dict[str, Any]:
+    def get_technology_blast_radius(
+        technology_id: str,
+        as_of_date: Optional[date] = Query(None, description="Target evaluation date (YYYY-MM-DD)"),
+    ) -> dict[str, Any]:
         """Calculate direct and cascading blast radius for a given technology asset."""
         try:
-            return tecton_app.trm_blast_radius(technology_id)
+            return tecton_app.trm_blast_radius(technology_id, as_of_date=as_of_date)
         except EntityNotFoundError as e:
             raise HTTPException(status_code=404, detail=str(e))
 
@@ -196,18 +212,21 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
         return tecton_app.list_work_packages()
 
     @app.get("/api/v1/roadmap/analyze", tags=["Roadmap"])
-    def analyze_roadmap() -> dict[str, Any]:
+    def analyze_roadmap(
+        as_of_date: Optional[date] = Query(None, description="Target evaluation date (YYYY-MM-DD)"),
+    ) -> dict[str, Any]:
         """Audit roadmap consistency, plateau states, and transitional capability gaps."""
-        return tecton_app.roadmap_analysis()
+        return tecton_app.roadmap_analysis(as_of_date=as_of_date)
 
     @app.get("/api/v1/roadmap/compare", tags=["Roadmap"])
     def compare_plateaus(
         from_plateau: str = Query(..., description="Baseline or predecessor plateau ID"),
         to_plateau: str = Query(..., description="Target plateau ID"),
+        as_of_date: Optional[date] = Query(None, description="Target evaluation date (YYYY-MM-DD)"),
     ) -> dict[str, Any]:
         """Compare two architecture plateaus and compute scenario delta (As-Is vs To-Be)."""
         try:
-            return tecton_app.roadmap_compare(from_plateau, to_plateau)
+            return tecton_app.roadmap_compare(from_plateau, to_plateau, as_of_date=as_of_date)
         except KeyError as e:
             raise HTTPException(status_code=404, detail=str(e))
 

@@ -184,8 +184,14 @@ class SoftwareSystemDef(BaseModel):
             raise ValueError("System name must not be empty")
         return clean
 
-    def to_application(self) -> Application:
-        """Convert SoftwareSystemDef into core Application domain model."""
+    def to_application(self, as_of_date: date | None = None) -> Application:
+        """Convert SoftwareSystemDef into core Application domain model as of target date."""
+        if as_of_date and self.lifecycle:
+            phase = self.lifecycle.phase_as_of(as_of_date) or self.current_phase
+        elif not self.current_phase and self.lifecycle:
+            phase = self.lifecycle.phase_as_of()
+        else:
+            phase = self.current_phase
         return Application(
             id=self.id,
             name=self.name,
@@ -193,7 +199,7 @@ class SoftwareSystemDef(BaseModel):
             functional_suitability=self.functional_suitability,
             technical_suitability=self.technical_suitability,
             time_classification=self.time_classification,
-            current_phase=self.current_phase or (self.lifecycle.current_phase if self.lifecycle else None),
+            current_phase=phase,
             lifecycle=self.lifecycle,
             capabilities=self.capabilities,
             user_groups=self.user_groups,

@@ -1,5 +1,4 @@
-"""CLI subcommands for Technology Risk & Obsolescence Management (TRM)."""
-
+from datetime import date
 from pathlib import Path
 from typing import Annotated, Optional
 import typer
@@ -25,17 +24,22 @@ def _resolve_source(source: str | None) -> Path:
 @app.command("list")
 def list_technologies(
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
+    as_of_date: Annotated[Optional[str], typer.Option("--as-of-date", help="Target evaluation date (YYYY-MM-DD) for EOL obsolescence")] = None,
 ) -> None:
     """List technology standards, obsolescence milestones, and system adoption count."""
     target_path = _resolve_source(source)
     service = TRMService(target_path)
-    report = service.evaluate_technologies()
+    eval_date = date.fromisoformat(as_of_date) if as_of_date else None
+    report = service.evaluate_technologies(as_of_date=eval_date)
 
     if not report.technologies:
         console.print("[yellow]No technologies registered in architecture catalog.[/yellow]")
         return
 
-    table = Table(title=f"Technology Standards Catalog ({report.total_technologies} technologies)")
+    title = f"Technology Standards Catalog ({report.total_technologies} technologies)"
+    if as_of_date:
+        title += f" [As of: {as_of_date}]"
+    table = Table(title=title)
     table.add_column("ID", style="dim", no_wrap=True)
     table.add_column("Technology Name", style="bold cyan")
     table.add_column("Category", style="magenta")
@@ -85,20 +89,23 @@ def list_technologies(
 def calculate_blast_radius(
     technology_id: Annotated[str, typer.Argument(help="Technology ID to evaluate blast radius")],
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
+    as_of_date: Annotated[Optional[str], typer.Option("--as-of-date", help="Target evaluation date (YYYY-MM-DD) for EOL obsolescence")] = None,
 ) -> None:
     """Calculate direct and cascading blast radius if a technology fails or reaches EOL."""
     target_path = _resolve_source(source)
     service = TRMService(target_path)
+    eval_date = date.fromisoformat(as_of_date) if as_of_date else None
 
     try:
-        report = service.calculate_blast_radius(technology_id)
+        report = service.calculate_blast_radius(technology_id, as_of_date=eval_date)
     except KeyError as e:
         console.print(f"[bold red]Error: {e}[/bold red]")
         raise typer.Exit(code=1)
 
     risk_style = "bold red" if report.risk_score >= 60 else "bold yellow" if report.risk_score >= 30 else "green"
 
-    console.print(f"\n[bold]Blast Radius Impact Analysis:[/bold] [cyan]{report.technology_name}[/cyan] ({report.technology_id})")
+    date_str = f" [As of: {as_of_date}]" if as_of_date else ""
+    console.print(f"\n[bold]Blast Radius Impact Analysis:[/bold] [cyan]{report.technology_name}[/cyan] ({report.technology_id}){date_str}")
     console.print(Panel(
         f"[bold]Summary:[/bold] {report.summary}\n\n"
         f"• Technology Status: [bold]{report.status.value.upper()}[/bold] "
@@ -129,11 +136,13 @@ def calculate_blast_radius(
 def export_radar(
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
     output: Annotated[Optional[str], typer.Option("--output", "-o", help="Output file path (default stdout)")] = None,
+    as_of_date: Annotated[Optional[str], typer.Option("--as-of-date", help="Target evaluation date (YYYY-MM-DD) for EOL obsolescence")] = None,
 ) -> None:
     """Export Mermaid diagram of the Technology Radar."""
     target_path = _resolve_source(source)
     service = TRMService(target_path)
-    chart = service.export_radar()
+    eval_date = date.fromisoformat(as_of_date) if as_of_date else None
+    chart = service.export_radar(as_of_date=eval_date)
 
     if output:
         out_path = Path(output)

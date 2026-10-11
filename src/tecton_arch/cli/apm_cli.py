@@ -1,5 +1,4 @@
-"""CLI subcommands for Application Portfolio Management (APM)."""
-
+from datetime import date
 from pathlib import Path
 from typing import Annotated, Optional
 import typer
@@ -46,18 +45,23 @@ def get_repository(source: str | None, config: TectonConfig) -> ArchitectureRepo
 def list_applications(
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to input JSON/YAML file")] = None,
     config_path: Annotated[Optional[str], typer.Option("--config", "-c", help="Path to tecton.yaml")] = None,
+    as_of_date: Annotated[Optional[str], typer.Option("--as-of-date", help="Target evaluation date (YYYY-MM-DD) for lifecycle phase")] = None,
 ) -> None:
     """List all applications in the portfolio with fit scores and lifecycle."""
     config = TectonConfig.load(config_path)
     repo = get_repository(source, config)
     service = APMService(repo, config.time, config.redundancy)
 
-    applications = service.get_applications()
+    eval_date = date.fromisoformat(as_of_date) if as_of_date else None
+    applications = service.get_applications(as_of_date=eval_date)
     if not applications:
         console.print("[yellow]No applications found in repository.[/yellow]")
         return
 
-    table = Table(title=f"Application Portfolio ({len(applications)} systems)")
+    title = f"Application Portfolio ({len(applications)} systems)"
+    if as_of_date:
+        title += f" [As of: {as_of_date}]"
+    table = Table(title=title)
     table.add_column("ID", style="dim", no_wrap=True)
     table.add_column("Name", style="bold cyan", no_wrap=True)
     table.add_column("Criticality", style="magenta")
@@ -101,6 +105,7 @@ def analyze_portfolio(
     config_path: Annotated[Optional[str], typer.Option("--config", "-c", help="Path to tecton.yaml")] = None,
     business_threshold: Annotated[Optional[float], typer.Option("--b-thresh", help="Business Fit threshold (1.0-5.0)")] = None,
     technical_threshold: Annotated[Optional[float], typer.Option("--t-thresh", help="Technical Fit threshold (1.0-5.0)")] = None,
+    as_of_date: Annotated[Optional[str], typer.Option("--as-of-date", help="Target evaluation date (YYYY-MM-DD) for lifecycle phase and APM analytics")] = None,
 ) -> None:
     """Run full deterministic APM evaluation: TIME classification, Redundancy, and Lifecycle."""
     config = TectonConfig.load(config_path)
@@ -111,11 +116,13 @@ def analyze_portfolio(
 
     repo = get_repository(source, config)
     service = APMService(repo, config.time, config.redundancy)
+    eval_date = date.fromisoformat(as_of_date) if as_of_date else None
 
     with console.status("[bold green]Executing Tecton Portfolio Analytics..."):
-        result = service.analyze()
+        result = service.analyze(as_of_date=eval_date)
 
-    console.print("\n[bold]1. Gartner TIME Classification Results[/bold]")
+    date_str = f" [As of: {as_of_date}]" if as_of_date else ""
+    console.print(f"\n[bold]1. Gartner TIME Classification Results{date_str}[/bold]")
     summary_table = Table()
     summary_table.add_column("Quadrant", style="bold")
     summary_table.add_column("Application Count", justify="right")
@@ -169,13 +176,15 @@ def export_matrix(
     config_path: Annotated[Optional[str], typer.Option("--config", "-c", help="Path to tecton.yaml")] = None,
     fmt: Annotated[str, typer.Option("--format", "-f", help="Export format: mermaid or markdown")] = "mermaid",
     output: Annotated[Optional[str], typer.Option("--output", "-o", help="Output file path (default stdout)")] = None,
+    as_of_date: Annotated[Optional[str], typer.Option("--as-of-date", help="Target evaluation date (YYYY-MM-DD) for portfolio evaluation")] = None,
 ) -> None:
     """Export TIME model visual diagram (Mermaid quadrantChart) or full Markdown report."""
     config = TectonConfig.load(config_path)
     repo = get_repository(source, config)
     service = APMService(repo, config.time, config.redundancy)
+    eval_date = date.fromisoformat(as_of_date) if as_of_date else None
 
-    apps = service.get_applications()
+    apps = service.get_applications(as_of_date=eval_date)
     if not apps:
         console.print("[red]No applications found to generate report.[/red]")
         return
@@ -183,7 +192,7 @@ def export_matrix(
     if fmt.lower() == "mermaid":
         content = MermaidExporter.to_time_quadrant_chart(apps)
     else:
-        result = service.analyze()
+        result = service.analyze(as_of_date=eval_date)
         content = MarkdownExporter.generate_apm_report(
             applications=result.applications,
             time_classifications=result.time_classifications,

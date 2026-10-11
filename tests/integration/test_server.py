@@ -293,3 +293,37 @@ def test_server_explicit_dfd_and_radar_details(client: TestClient):
     assert {node['kind'] for node in response.json()[0]['nodes']} == {'process', 'data_store', 'external_entity'}
     technologies = client.get('/api/v1/trm/technologies').json()['technologies']
     assert all('realizing_system_details' in item and 'is_eol' in item for item in technologies)
+
+
+def test_server_temporal_determinism(client: TestClient):
+    # Historical overview: before Solaris EOL
+    res_hist = client.get("/api/v1/overview?as_of_date=2023-01-01")
+    assert res_hist.status_code == 200
+    data_hist = res_hist.json()
+    assert data_hist["as_of_date"] == "2023-01-01"
+    assert data_hist["technologies_past_eol"] == 0
+
+    # Modern overview: after Solaris EOL
+    res_mod = client.get("/api/v1/overview?as_of_date=2025-01-01")
+    assert res_mod.status_code == 200
+    data_mod = res_mod.json()
+    assert data_mod["as_of_date"] == "2025-01-01"
+    assert data_mod["technologies_past_eol"] == 1
+
+    # APM applications at 2021-03-01: sys-crm-core in plan phase
+    res_apm_2021 = client.get("/api/v1/apm/applications?as_of_date=2021-03-01")
+    assert res_apm_2021.status_code == 200
+    crm_2021 = next(a for a in res_apm_2021.json() if a["id"] == "sys-crm-core")
+    assert crm_2021["current_phase"] == "plan"
+
+    # APM applications at 2022-06-01: sys-crm-core in active phase
+    res_apm_2022 = client.get("/api/v1/apm/applications?as_of_date=2022-06-01")
+    assert res_apm_2022.status_code == 200
+    crm_2022 = next(a for a in res_apm_2022.json() if a["id"] == "sys-crm-core")
+    assert crm_2022["current_phase"] == "active"
+
+    # Validation endpoint with as_of_date
+    res_val = client.get("/api/v1/validate?as_of_date=2020-01-01")
+    assert res_val.status_code == 200
+    assert res_val.json()["as_of_date"] == "2020-01-01"
+

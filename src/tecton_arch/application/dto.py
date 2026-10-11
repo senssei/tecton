@@ -35,6 +35,7 @@ class OverviewDto(BaseModel):
     total_data_objects: int
     total_plateaus: int = 0
     total_work_packages: int = 0
+    as_of_date: Optional[str] = None
 
 
 class ValidationIssueDto(BaseModel):
@@ -49,6 +50,7 @@ class ValidationReportDto(BaseModel):
     valid: bool
     error_count: int
     warning_count: int
+    as_of_date: Optional[str] = None
     issues: list[ValidationIssueDto] = Field(default_factory=list)
 
     @property

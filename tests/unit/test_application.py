@@ -1,5 +1,4 @@
-"""Unit tests for Tecton application layer, Workspace, and TectonApp facade."""
-
+from datetime import date
 from pathlib import Path
 import json
 import pytest
@@ -163,3 +162,49 @@ def test_radar_static_and_rest_data_match(dogfood_workspace_path):
     assert technology['realizing_systems_count'] == len(technology['realizing_system_details'])
     assert technology['realizing_system_details'][0]['owner'] == 'Tecton maintainers'
     assert 'eol_date' in technology and 'is_eol' in technology
+
+
+def test_tecton_app_temporal_determinism():
+    graph = C4EAMParser().parse_content("""
+technologies:
+  - id: tech-test
+    name: Test Tech
+    status: approved
+    eol_date: 2026-06-01
+
+systems:
+  - id: sys-test
+    name: Test System
+    owner: Architects
+    technologies: [tech-test]
+    lifecycle:
+      phases:
+        - phase: plan
+          start_date: 2025-01-01
+        - phase: active
+          start_date: 2026-01-01
+        - phase: endOfLife
+          start_date: 2026-12-31
+""")
+    ws = Workspace.from_graph(graph)
+
+    # Eval 2025-06-01 (phase is plan, tech not EOL)
+    app_2025 = TectonApp(ws, as_of_date=date(2025, 6, 1))
+    overview_2025 = app_2025.overview()
+    assert overview_2025.as_of_date == "2025-06-01"
+    assert overview_2025.technologies_past_eol == 0
+    apps_2025 = app_2025.apm_applications()
+    assert apps_2025[0]["current_phase"] == "plan"
+
+    # Eval 2026-08-01 (phase is active, tech is past EOL)
+    app_2026 = TectonApp(ws, as_of_date=date(2026, 8, 1))
+    overview_2026 = app_2026.overview()
+    assert overview_2026.as_of_date == "2026-08-01"
+    assert overview_2026.technologies_past_eol == 1
+    apps_2026 = app_2026.apm_applications()
+    assert apps_2026[0]["current_phase"] == "active"
+
+    snapshot = app_2026.portal_snapshot()
+    assert snapshot["as_of_date"] == "2026-08-01"
+
+

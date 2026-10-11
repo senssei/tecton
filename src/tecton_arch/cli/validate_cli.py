@@ -1,5 +1,4 @@
-"""CLI subcommands for Architecture Quality Gate and Graph Linter (validate/lint)."""
-
+from datetime import date
 import json
 from pathlib import Path
 from typing import Annotated, Optional
@@ -17,6 +16,7 @@ def run_validation(
     strict: bool = False,
     output_format: str = "table",
     require_owner: bool = False,
+    as_of_date: Optional[date] = None,
 ) -> None:
     """Validate architecture DSL workspace and enforce CI/CD quality gate."""
     target_path = path.resolve()
@@ -25,9 +25,9 @@ def run_validation(
         raise typer.Exit(code=1)
 
     try:
-        app = TectonApp(target_path)
+        app = TectonApp(target_path, as_of_date=as_of_date)
         graph = app.graph
-        report = app.validate(strict=False, require_owner=require_owner)
+        report = app.validate(strict=False, as_of_date=as_of_date, require_owner=require_owner)
     except Exception as e:
         console.print(f"[bold red]Critical manifest parsing error: {e}[/bold red]")
         raise typer.Exit(code=1)
@@ -35,6 +35,7 @@ def run_validation(
     if output_format.lower() == "json":
         data = {
             "valid": report.valid and (report.warning_count == 0 if strict else True),
+            "as_of_date": str(as_of_date) if as_of_date else None,
             "files_scanned": len(graph.files_parsed),
             "error_count": report.error_count,
             "warning_count": report.warning_count,
@@ -56,6 +57,8 @@ def run_validation(
 
     # Table format
     console.print("\n[bold cyan]Tecton Architecture Quality Gate & Graph Linter[/bold cyan]")
+    if as_of_date:
+        console.print(f"Evaluation Date: [bold magenta]{as_of_date}[/bold magenta]")
     console.print(
         f"Scanning directory: [dim]{target_path}[/dim] "
         f"({len(graph.files_parsed)} files, "
@@ -136,6 +139,17 @@ def validate_command(
     require_owner: Annotated[
         bool, typer.Option("--require-owner", help="Require an accountable owner for every system")
     ] = False,
+    as_of_date: Annotated[
+        Optional[str],
+        typer.Option("--as-of-date", help="Target evaluation date (YYYY-MM-DD) for lifecycle invariants"),
+    ] = None,
 ) -> None:
     """Validate architecture DSL workspace and enforce referential integrity & DAG invariants."""
-    run_validation(path=path, strict=strict, output_format=output_format, require_owner=require_owner)
+    eval_date = date.fromisoformat(as_of_date) if as_of_date else None
+    run_validation(
+        path=path,
+        strict=strict,
+        output_format=output_format,
+        require_owner=require_owner,
+        as_of_date=eval_date,
+    )

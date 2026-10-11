@@ -1,5 +1,4 @@
-"""CLI subcommands for Architecture Transformation Roadmapping (roadmap)."""
-
+from datetime import date
 from pathlib import Path
 from typing import Annotated, Optional
 import typer
@@ -99,19 +98,22 @@ def list_roadmap(
 @app.command("analyze")
 def analyze_roadmap(
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
+    as_of_date: Annotated[Optional[str], typer.Option("--as-of-date", help="Target evaluation date (YYYY-MM-DD) for roadmap analysis")] = None,
 ) -> None:
     """Audit roadmap consistency, evaluate plateau states, and detect transitional capability gaps."""
     target_path = _resolve_source(source)
     service = RoadmapService(target_path)
-    report = service.analyze()
+    eval_date = date.fromisoformat(as_of_date) if as_of_date else None
+    report = service.analyze(as_of_date=eval_date)
 
     status_str = " | ".join(f"{k}: {v}" for k, v in report.work_packages_by_status.items() if v > 0)
+    date_str = f" [As of: {as_of_date}]" if as_of_date else ""
     summary_panel = Panel(
         f"[bold]Total Plateaus:[/bold] {report.total_plateaus}  |  "
         f"[bold]Total Work Packages:[/bold] {report.total_work_packages}\n"
         f"[bold]Work Package Statuses:[/bold] {status_str or 'None'}\n"
         f"[bold]Transitional Capability Gaps:[/bold] {len(report.transitional_gaps)}",
-        title="🗺️ Architecture Transformation Roadmap Summary",
+        title=f"🗺️ Architecture Transformation Roadmap Summary{date_str}",
         border_style="cyan",
     )
     console.print(summary_panel)
@@ -160,23 +162,26 @@ def compare_plateaus(
     from_plateau: Annotated[str, typer.Argument(help="Baseline or starting plateau ID (e.g. As-Is)")],
     to_plateau: Annotated[str, typer.Argument(help="Target plateau ID (e.g. To-Be)")],
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
+    as_of_date: Annotated[Optional[str], typer.Option("--as-of-date", help="Target evaluation date (YYYY-MM-DD) for tech debt evaluation")] = None,
 ) -> None:
     """Compare two architecture plateaus and compute scenario delta (As-Is vs To-Be)."""
     target_path = _resolve_source(source)
     service = RoadmapService(target_path)
+    eval_date = date.fromisoformat(as_of_date) if as_of_date else None
 
     try:
-        comparison = service.compare_plateaus(from_plateau, to_plateau)
+        comparison = service.compare_plateaus(from_plateau, to_plateau, as_of_date=eval_date)
     except KeyError as e:
         console.print(f"[bold red]Error:[/bold red] {e}")
         raise typer.Exit(code=1)
 
+    date_str = f" [As of: {as_of_date}]" if as_of_date else ""
     panel = Panel(
         f"[bold]From Plateau:[/bold] {comparison.from_plateau_name} ({comparison.from_plateau_id})\n"
         f"[bold]To Plateau:[/bold]   {comparison.to_plateau_name} ({comparison.to_plateau_id})\n"
         f"[bold]Net Capability Gain:[/bold] [green]{comparison.net_capability_gain:+d}[/green]\n"
         f"[bold]Tech Debt Reduction:[/bold] [green]{comparison.tech_debt_reduction_count} obsolete technologies eliminated[/green]",
-        title="🔬 Architecture Scenario Comparison (As-Is vs To-Be)",
+        title=f"🔬 Architecture Scenario Comparison (As-Is vs To-Be){date_str}",
         border_style="magenta",
     )
     console.print(panel)
@@ -253,11 +258,13 @@ def export_gantt(
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
     output: Annotated[Optional[str], typer.Option("--output", "-o", help="Output file path")] = None,
     title: Annotated[str, typer.Option("--title", "-t", help="Chart title")] = "Enterprise Architecture Transformation Roadmap",
+    as_of_date: Annotated[Optional[str], typer.Option("--as-of-date", help="Target evaluation date (YYYY-MM-DD) for Gantt chart")] = None,
 ) -> None:
     """Export Mermaid Gantt chart of architecture transformation roadmap."""
     target_path = _resolve_source(source)
     service = RoadmapService(target_path)
-    diagram = service.export_gantt(title=title)
+    eval_date = date.fromisoformat(as_of_date) if as_of_date else None
+    diagram = service.export_gantt(title=title, as_of_date=eval_date)
 
     if output:
         out_file = Path(output)

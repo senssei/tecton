@@ -59,3 +59,12 @@ def test_cli_validate_fails_on_dangling_references(tmp_path: Path):
     assert result.exit_code == 1
     assert "REF_INTEGRITY_DANGLING_SYSTEM_CAPABILITY" in result.output
     assert "CI/CD QUALITY GATE BLOCKED" in result.output
+
+
+def test_cli_validate_as_of_date():
+    workspace = Path(__file__).parents[2] / "examples" / "c4_eam_workspace"
+    result = runner.invoke(app, ["validate", "--format", "json", "--as-of-date", "2020-01-01", str(workspace)])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert data["as_of_date"] == "2020-01-01"
+
