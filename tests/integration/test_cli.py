@@ -56,3 +56,23 @@ def test_cli_apm_patch_time_dry_run() -> None:
     assert result.exit_code == 0
     assert "[DRY-RUN - SIMULATION]" in result.stdout
     assert "Entity ID:" in result.stdout
+
+
+def test_cli_portal_command(monkeypatch) -> None:
+    import uvicorn
+
+    called = {}
+
+    def mock_run(app, host, port):
+        called["app"] = app
+        called["host"] = host
+        called["port"] = port
+
+    monkeypatch.setattr(uvicorn, "run", mock_run)
+
+    result = runner.invoke(app, ["portal", "--source", "examples/dogfood/tecton_c4_workspace", "--port", "8888"])
+    assert result.exit_code == 0
+    assert "Tecton Architecture Intelligence Server & Web Portal" in result.stdout
+    assert "http://127.0.0.1:8888/" in result.stdout
+    assert called["port"] == 8888
+

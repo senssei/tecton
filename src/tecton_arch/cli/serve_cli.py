@@ -47,7 +47,7 @@ def serve_command(
         f"• ReDoc Portal: [bold magenta]http://{host}:{port}/redoc[/bold magenta]\n"
         f"• Features: APM, BCM, TRM, Data Lineage, Roadmap Gantt, Backstage/ArchiMate Exports",
         title="🏛️ Tecton Living Architecture Portal",
-        border_style="indigo",
+        border_style="blue",
     ))
 
     uvicorn.run(app, host=host, port=port)
