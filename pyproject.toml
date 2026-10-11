@@ -1,12 +1,26 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=77.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "tecton"
+name = "tecton-arch"
 version = "0.1.0"
 description = "Deterministic Enterprise Architecture Intelligence Engine & Architecture-as-Code Toolkit"
-readme = "README.md"
+readme = "PYPI_README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+keywords = ["enterprise-architecture", "architecture-as-code", "eam", "gitops", "mermaid"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Documentation",
+]
 requires-python = ">=3.11"
 authors = [
     { name = "Tecton Architecture Team" }
@@ -21,6 +35,13 @@ dependencies = [
     "uvicorn>=0.25.0"
 ]
 
+[project.urls]
+Homepage = "https://github.com/senssei/tecton"
+Repository = "https://github.com/senssei/tecton"
+Documentation = "https://github.com/senssei/tecton/tree/main/docs"
+Issues = "https://github.com/senssei/tecton/issues"
+Changelog = "https://github.com/senssei/tecton/blob/main/CHANGELOG.md"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
@@ -28,11 +49,15 @@ dev = [
     "httpx>=0.25.0"
 ]
 
+release = ["build>=1.2.2", "twine>=6.0"]
+
 [project.scripts]
-tecton = "tecton.cli.main:app"
+tecton = "tecton_arch.cli.main:app"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["tecton_arch*"]
+namespaces = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,31 +1,39 @@
-# Tecton Internal Architecture Relationships
 relationships:
-  - source_id: sys-tecton-cli
-    target_id: sys-tecton-dsl-linter
-    relation_type: depends_on
-    technology: Direct Python Method Call
-    description: Calls GraphLinter for pre-merge validation
-
-  - source_id: sys-tecton-cli
-    target_id: sys-tecton-adapter-git
-    relation_type: depends_on
-    technology: ArchitectureRepositoryPort Interface
-    description: Ingests architecture from Git repository
-
-  - source_id: sys-tecton-cli
-    target_id: sys-tecton-engine-time
-    relation_type: depends_on
-    technology: APMService Domain Boundary
-    description: Evaluates TIME classifications
-
-  - source_id: sys-tecton-cli
-    target_id: sys-tecton-engine-redundancy
-    relation_type: depends_on
-    technology: APMService Domain Boundary
-    description: Computes Jaccard redundancy clusters
-
-  - source_id: sys-tecton-cli
-    target_id: sys-tecton-exporter-mermaid
-    relation_type: depends_on
-    technology: Static Exporter Interface
-    description: Generates living Mermaid diagrams
+- source_id: sys-tecton-application
+  target_id: sys-tecton-dsl-linter
+  relation_type: depends_on
+  technology: Python use-case orchestration
+  description: Calls GraphLinter for pre-merge validation
+- source_id: sys-tecton-application
+  target_id: sys-tecton-adapter-git
+  relation_type: depends_on
+  technology: Python use-case orchestration
+  description: Ingests architecture from Git repository
+- source_id: sys-tecton-application
+  target_id: sys-tecton-engine-time
+  relation_type: depends_on
+  technology: Python use-case orchestration
+  description: Evaluates TIME classifications
+- source_id: sys-tecton-application
+  target_id: sys-tecton-engine-redundancy
+  relation_type: depends_on
+  technology: Python use-case orchestration
+  description: Computes Jaccard redundancy clusters
+- source_id: sys-tecton-application
+  target_id: sys-tecton-exporter-mermaid
+  relation_type: depends_on
+  technology: Python use-case orchestration
+  description: Generates living Mermaid diagrams
+- source_id: sys-tecton-server
+  target_id: sys-tecton-application
+  relation_type: depends_on
+- source_id: sys-tecton-portal
+  target_id: sys-tecton-application
+  relation_type: depends_on
+- source_id: sys-tecton-application
+  target_id: sys-tecton-core
+  relation_type: depends_on
+- source_id: sys-tecton-cli
+  target_id: sys-tecton-application
+  relation_type: depends_on
+  description: CLI delegates to application use cases

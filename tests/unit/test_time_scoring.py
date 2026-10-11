@@ -1,8 +1,8 @@
 """Unit tests for TimeScoringEngine."""
 
 import pytest
-from tecton.core.models import Application, TimeConfig, TimeQuadrant
-from tecton.engines.time_scoring import TimeScoringEngine
+from tecton_arch.core.models import Application, TimeConfig, TimeQuadrant
+from tecton_arch.engines.time_scoring import TimeScoringEngine
 
 
 def test_time_scoring_invest() -> None:

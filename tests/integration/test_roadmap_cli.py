@@ -3,7 +3,7 @@
 from pathlib import Path
 from typer.testing import CliRunner
 
-from tecton.cli.main import app
+from tecton_arch.cli.main import app
 
 runner = CliRunner()
 WORKSPACE = Path(__file__).parents[2] / "examples" / "c4_eam_workspace"

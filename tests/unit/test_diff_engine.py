@@ -1,7 +1,7 @@
 """Unit tests for semantic architecture DiffEngine."""
 
-from tecton.dsl.parser import C4EAMParser
-from tecton.engines.diff_engine import ChangeType, DiffEngine
+from tecton_arch.dsl.parser import C4EAMParser
+from tecton_arch.engines.diff_engine import ChangeType, DiffEngine
 
 
 def test_diff_engine_entity_additions_and_removals():

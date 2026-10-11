@@ -1,8 +1,8 @@
 """Unit tests for Business Capability Management (BCM) Engine."""
 
-from tecton.core.models import Application, TimeQuadrant
-from tecton.dsl.schema import BusinessCapabilityDef
-from tecton.engines.bcm_engine import BCMEngine, CapabilityHealth
+from tecton_arch.core.models import Application, TimeQuadrant
+from tecton_arch.dsl.schema import BusinessCapabilityDef
+from tecton_arch.engines.bcm_engine import BCMEngine, CapabilityHealth
 
 
 def test_bcm_engine_coverage_and_gap_detection():

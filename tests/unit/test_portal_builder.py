@@ -1,8 +1,8 @@
 """Unit tests for PortalBuilder and Living Architecture Web Portal generation."""
 
 from pathlib import Path
-from tecton.dsl.parser import C4EAMParser
-from tecton.portal.builder import PortalBuilder
+from tecton_arch.dsl.parser import C4EAMParser
+from tecton_arch.portal.builder import PortalBuilder
 
 
 def test_portal_builder_dynamic_html():

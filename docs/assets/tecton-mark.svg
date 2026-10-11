@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Tecton</title>
+  <desc id="desc">Three architecture layers connected by a central pillar</desc>
+  <rect width="128" height="128" rx="28" fill="#0f172a"/>
+  <path d="M24 83 64 63 104 83 64 103Z" fill="#0f766e" stroke="#5eead4" stroke-width="2"/>
+  <path d="M24 65 64 45 104 65 64 85Z" fill="#1d4ed8" stroke="#93c5fd" stroke-width="2"/>
+  <path d="M24 47 64 27 104 47 64 67Z" fill="#4338ca" stroke="#c7d2fe" stroke-width="2"/>
+  <path d="M44 43H84M64 43V75" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="24" cy="47" r="4" fill="#a5b4fc"/>
+  <circle cx="104" cy="65" r="4" fill="#93c5fd"/>
+  <circle cx="64" cy="103" r="4" fill="#5eead4"/>
+</svg>

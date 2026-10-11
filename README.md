@@ -1,228 +1,97 @@
-# Tecton (Enterprise Architecture Intelligence Engine)
+<p align="center">
+  <img src="docs/assets/tecton-mark.svg" width="112" height="112" alt="Tecton architecture layers logo">
+</p>
 
-> **Deterministic Enterprise Architecture Intelligence & Architecture-as-Code Toolkit**
-> Enforce architectural quality gates, automate portfolio scoring (Gartner TIME framework), detect functional redundancy, and generate living documentation directly from code repositories and CI/CD pipelines without vendor lock-in.
+# Tecton 🏛️
 
----
+**Enterprise architecture as code. Maintain a catalog in Git, validate changes, and explore the model through a generated portal.**
 
-## 📁 Repository Structure
+![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)
+[![Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
+[![CI](https://github.com/senssei/tecton/actions/workflows/ci.yml/badge.svg)](https://github.com/senssei/tecton/actions/workflows/ci.yml)
+![Status: alpha](https://img.shields.io/badge/status-alpha-orange)
 
-```
-tecton/
-├── docs/                                    # 📚 Comprehensive architectural & analytical documentation
-│   ├── 01_product_vision.md                 # Product vision, mission, and five strategic pillars
-│   ├── 02_adversarial_analysis.md           # Adversarial analysis: EAM repository APIs vs. domain logic
-│   ├── 03_baseline_architecture.md          # Baseline hexagonal architecture & APM module design
-│   ├── 04_eam_capabilities_catalog.md       # Standard metamodel & EAM capability taxonomy
-│   ├── 05_attribute_driven_design.md        # SEI Attribute-Driven Design (ADD 3.0) specification
-│   ├── 06_git_eam_graph_adversarial_analysis.md # Adversarial analysis: Git-backed EAM graph & C4 DSL
-│   └── adr/                                 # 🏛️ Architecture Decision Records (ADRs)
-│       ├── 0001-hexagonal-architecture.md
-│       ├── 0002-deterministic-offline-engines.md
-│       ├── 0003-safety-first-mutation-policy.md
-│       ├── 0004-sovereign-mermaid-visualizations.md
-│       ├── 0005-attribute-driven-design-methodology.md
-│       └── 0006-git-backed-eam-graph-and-c4-extended-dsl.md
-├── src/                                     # 💻 Production source code (Clean Architecture)
-│   └── tecton/
-│       ├── core/                            # Pure domain models (Application, Lifecycle, TIME, Config)
-│       ├── dsl/                             # C4-Extended EAM DSL (schema, parser, compiler, linter)
-│       ├── engines/                         # Deterministic analytic engines (TIME, Redundancy, Lifecycle)
-│       ├── adapters/                        # Ports & Adapters (Git Workspace, GraphQL, In-Memory, File)
-│       ├── exporters/                       # Visual exporters (Mermaid quadrantChart, Living Markdown)
-│       ├── services/                        # Orchestration services (APMService)
-│       └── cli/                             # Terminal interface (Typer + Rich: validate, apm)
-├── tests/                                   # 🧪 Automated test suite (100% offline, unit & integration)
-│   ├── unit/                                # Unit tests for analytic engines, adapters, and DSL linter
-│   ├── integration/                         # Integration tests for CLI, Git adapter, and dogfooding
-│   └── fixtures/                            # Test fixtures and enterprise application samples
-├── examples/                                # 📋 Declarative manifests & dogfooding models
-│   ├── c4_eam_workspace/                    # Sample Git-backed C4-Extended Architecture-as-Code repository
-│   ├── config/                              # Sample tecton.yaml configurations
-│   └── dogfood/                             # Tecton's self-describing architecture models (JSON & C4 DSL)
-├── .gitignore                               # 🛡️ Python, virtual environment, and credential exclusions
-└── README.md                                # 📌 Project entry point
-```
+Tecton is a Python CLI and library for reviewing enterprise architecture models.
+It reads YAML/JSON manifests, compiles an in-memory graph, checks consistency,
+and produces portfolio reports, Mermaid diagrams and a read-only web portal.
 
----
+> **Package:** `tecton-arch` · **Python import:** `tecton_arch` · **CLI:** `tecton`
+>
+> This project is independent of the unrelated `tecton` package on PyPI.
+> The first `tecton-arch` release is being prepared; install from this checkout until it is published.
 
-## 🚀 Quick Start
+## ✨ What it does
 
-### Installation
+| Capability | Available behavior |
+| --- | --- |
+| 📚 Catalog | Systems, child components, capabilities, technologies, interfaces, data objects and roadmaps |
+| ✅ Validation | Duplicate IDs, broken references, capability cycles, lifecycle and roadmap checks; optional required system owner |
+| 📊 Portfolio | Threshold-based TIME classification and pairwise functional overlap detection |
+| 🧭 Architecture analysis | Capability coverage, technology blast radius, declared data lineage and plateau comparisons |
+| 🔎 Review | Semantic directory/Git diff and reports suitable for PR review |
+| 🌐 Publishing | Mermaid, Markdown and HTML portal exports; Backstage and ArchiMate connectors |
+
+## 🚀 Quick start
+
+Requires Python 3.11+. From a checkout of this repository:
+
 ```bash
-# Clone and set up virtual environment
-git clone <repo-url> tecton
-cd tecton
-uv venv .venv
+python -m venv .venv
 source .venv/bin/activate
-uv pip install -e ".[dev]"
-```
-
-### Architecture Quality Gate & Linting (CI/CD Enforcement)
-Prevent dangling pointers, cycles, and schema corruption before merging Pull Requests:
-```bash
-# Validate Git-backed architecture repository (checks referential integrity & DAG invariants)
-tecton validate examples/c4_eam_workspace
-
-# Enforce strict zero-warning policy (exits with code 1 on any warning)
-tecton validate --strict examples/c4_eam_workspace
-
-# Emit machine-readable JSON report for CI/CD pipelines
-tecton validate --format json examples/c4_eam_workspace
-
-# Using 'lint' alias
-tecton lint examples/c4_eam_workspace
-```
-
-### Application Portfolio Management (APM)
-Analyze portfolio health directly from a Git-backed workspace or local file:
-```bash
-# Inspect application portfolio directly from Git repository manifests
-tecton apm list --source examples/c4_eam_workspace
-
-# Run full deterministic APM evaluation (TIME, Redundancy, Lifecycle validation)
-tecton apm analyze --source examples/c4_eam_workspace
-
-# Export living Mermaid quadrant chart directly from Git repository
-tecton apm export-matrix --source examples/c4_eam_workspace --format mermaid
-
-# Export executive Markdown living report
-tecton apm export-matrix --source examples/c4_eam_workspace --format markdown -o report.md
-
-# Safely simulate TIME quadrant patch updates (Dry-Run by default)
-tecton apm patch-time --source examples/c4_eam_workspace
-```
-
-### Business Capability Management (BCM) & Heatmaps
-Audit capability realization, uncover unmapped blind spots, and export living heatmaps:
-```bash
-# Render interactive hierarchical capability tree in the terminal
-tecton bcm tree --source examples/c4_eam_workspace
-
-# Run full realization coverage, gap analysis, and capability health scoring
-tecton bcm analyze --source examples/c4_eam_workspace
-
-# Export color-coded Mermaid capability realization heatmap
-tecton bcm heatmap --source examples/c4_eam_workspace
-```
-
-### Technology Risk & Obsolescence Management (TRM) & Blast Radius
-Manage tech radar standards and compute cascading blast radius of EOL components:
-```bash
-# List technology catalog with radar status, EOL milestones, and adoption count
-tecton trm list --source examples/c4_eam_workspace
-
-# Trace direct & cascading transitive dependency blast radius of an obsolete technology
-tecton trm blast-radius tech-legacy-solaris --source examples/c4_eam_workspace
-
-# Export living Mermaid Technology Radar flowchart
-tecton trm export-radar --source examples/c4_eam_workspace
-```
-
-### Semantic Architecture Diff & GitOps Review Gate
-Compare architecture states between Git branches, commit revisions, or directories:
-```bash
-# Compare two architecture workspaces or folders
-tecton diff examples/c4_eam_workspace examples/dogfood/tecton_c4_workspace
-
-# Compare Git revisions (e.g. main vs current HEAD or feature branch)
-tecton diff main HEAD
-
-# Generate an executive GitHub / GitLab Pull Request review comment
-tecton diff main HEAD --format pr-comment -o pr_review.md
-
-# Enforce pre-merge gate (exit code 1 if breaking regressions or unmapped capability gaps are introduced)
-tecton diff main HEAD --fail-on-risk
-```
-
-### Interface Contracts, Data Architecture & Lineage (`tecton data`)
-Catalog business data objects, interface contracts, trace end-to-end data lineage across systems, and audit compliance risks (GDPR/PII/PCI-DSS):
-```bash
-# List enterprise business data objects with privacy and compliance classifications
-tecton data list --source examples/c4_eam_workspace
-
-# List interface contracts, integration protocols, and carried data payloads
-tecton data interfaces --source examples/c4_eam_workspace
-
-# Trace end-to-end data lineage and audit privacy/compliance risks across the architecture graph
-tecton data lineage do-customer-profile --source examples/c4_eam_workspace
-
-# Export living Mermaid flowchart of data lineage trajectory across producer and consumer systems
-tecton data export-lineage do-customer-profile --source examples/c4_eam_workspace
-```
-
-### Architecture Transformation Roadmapping (`tecton roadmap`)
-Manage transformation plateaus (As-Is baseline vs transitional vs To-Be target), track work packages, audit transitional capability gaps, and export Mermaid Gantt diagrams:
-```bash
-# List plateaus and transformation work packages
-tecton roadmap list --source examples/c4_eam_workspace
-
-# Audit roadmap consistency, plateau states, and uncover transitional capability gaps
-tecton roadmap analyze --source examples/c4_eam_workspace
-
-# Compare As-Is vs To-Be architecture plateaus (delta on systems, capabilities, and tech debt)
-tecton roadmap compare plateau-2026-as-is plateau-2027-target --source examples/c4_eam_workspace
-
-# Export living Mermaid Gantt chart of transformation initiatives and milestones
-tecton roadmap export-gantt --source examples/c4_eam_workspace
-```
-
-### Interactive Architecture Intelligence Web Portal & Server (`tecton portal` / `tecton serve`)
-Serve the interactive visual Web Portal, live OpenAPI REST API, and living diagrams directly in your browser:
-```bash
-# Launch interactive Living Web Portal & REST API server
-tecton portal --source examples/c4_eam_workspace
-
-# Or use standard serve command (auto-binds to 127.0.0.1:8000)
-tecton serve --source examples/c4_eam_workspace --host 0.0.0.0 --port 8000
-
-# Open in browser:
-# • Interactive Web Portal:  http://127.0.0.1:8000/
-# • OpenAPI / Swagger UI:    http://127.0.0.1:8000/docs
-# • ReDoc Documentation:     http://127.0.0.1:8000/redoc
-
-# Export 100% self-contained, offline-first HTML portal bundle (for GitHub Pages / S3)
-tecton export portal --source examples/c4_eam_workspace -o dist/portal
-```
-
-### Open EA Ecosystem Connectors (`tecton export` & `tecton import`)
-Seamless bi-directional integration with Spotify Backstage and standard Open Group ArchiMate tooling:
-```bash
-# Export C4 EAM architecture graph to Spotify Backstage Software Catalog YAML
-tecton export backstage --source examples/c4_eam_workspace -o catalog-info.yaml
-
-# Export architecture graph to The Open Group ArchiMate Model Exchange XML (ArchiMate 3.0/3.1)
-tecton export archimate --source examples/c4_eam_workspace -o model.xml
-
-# Import Spotify Backstage catalog into Tecton Architecture-as-Code manifests
-tecton import backstage catalog-info.yaml -o imported_workspace/
-
-# Import The Open Group ArchiMate Model Exchange XML into Tecton manifests
-tecton import archimate model.xml -o imported_workspace/
-```
-
----
-
-## 🐶 Dogfooding Tecton
-Tecton evaluates and audits its own internal architecture using its own analytic engines and quality gates:
-```bash
-# 1. Enforce Quality Gate on Tecton's own C4 Architecture-as-Code workspace
-tecton validate examples/dogfood/tecton_c4_workspace
-
-# 2. Run APM portfolio analysis on Tecton's own components
+python -m pip install -e '.[dev]'
+tecton --version
+tecton validate examples/dogfood/tecton_c4_workspace --require-owner
 tecton apm analyze --source examples/dogfood/tecton_c4_workspace
-
-# 3. Export living Mermaid quadrant matrix of Tecton's architecture
-tecton apm export-matrix --source examples/dogfood/tecton_c4_workspace --format mermaid
+tecton export portal --source examples/dogfood/tecton_c4_workspace -o dist/portal
 ```
 
----
+Open `dist/portal/index.html`, or serve the model locally:
 
-## 🏛️ Architecture Documentation Index
-1. 📄 **[Product Vision (01_product_vision.md)](docs/01_product_vision.md)** – Mission, problem statement, business value, and Architecture-as-Code pillars.
-2. 📄 **[Adversarial Analysis: Repository APIs (02_adversarial_analysis.md)](docs/02_adversarial_analysis.md)** – Critical gap assessment comparing EAM repository APIs to required domain intelligence.
-3. 📄 **[Baseline Architecture (03_baseline_architecture.md)](docs/03_baseline_architecture.md)** – Hexagonal architecture specification, domain contracts, and APM engine design.
-4. 📄 **[EAM Capability Catalog (04_eam_capabilities_catalog.md)](docs/04_eam_capabilities_catalog.md)** – Industry metamodel, entity definitions, and standard capability layers.
-5. 📄 **[Attribute-Driven Design (05_attribute_driven_design.md)](docs/05_attribute_driven_design.md)** – SEI ADD 3.0 architectural drivers, tactics, and quality attribute scenarios.
-6. 📄 **[Adversarial Analysis: Git-Backed EAM Graph (06_git_eam_graph_adversarial_analysis.md)](docs/06_git_eam_graph_adversarial_analysis.md)** – Deep gap analysis of Git as an EAM Graph database via C4-extended DSL (dangling edges, merge anomalies, indexing).
-7. 📁 **[Architecture Decision Records (docs/adr/)](docs/adr/)** – Formal ADR log capturing design rationale and trade-offs.
+```bash
+tecton portal --source examples/dogfood/tecton_c4_workspace
+```
+
+The portal is at `http://127.0.0.1:8000/`; API documentation is at
+`http://127.0.0.1:8000/docs`. On Windows, activate the environment with
+`.venv\Scripts\Activate.ps1` in PowerShell.
+
+## 🗂️ Git EAM pilot
+
+The [pilot catalog](examples/dogfood/tecton_c4_workspace) models one Tecton
+product with 15 logical child components. Architects and tech leads edit YAML;
+reviewed PRs maintain the catalog. CI validates the merged model and exports a
+portal artifact. The [pilot guide](docs/08_git_eam_pilot.md) describes ownership,
+acceptance exercises and branch protection.
+
+```mermaid
+flowchart LR
+    Model["YAML / JSON in Git"] --> Review["PR review + validation"]
+    Review --> Graph["Compiled architecture graph"]
+    Graph --> Reports["Analysis and Mermaid reports"]
+    Graph --> Portal["Read-only portal"]
+```
+
+## 📖 Documentation
+
+- [Getting started](docs/getting_started.md) — installation and your first model.
+- [CLI reference](docs/cli_reference.md) — commands, sources and exit codes.
+- [Manifest reference](docs/manifest_reference.md) — entity fields and graph rules.
+- [Architecture and design index](docs/README.md) — implementation, risks and ADRs.
+- [Contributing](CONTRIBUTING.md) — development and verification.
+- [GitHub setup](docs/github_publication.md) and [PyPI releases](docs/pypi_release.md).
+
+## ⚠️ Current limits
+
+This is an alpha tool. Analysis reflects the supplied metadata; it does not
+inspect deployed systems, scan vulnerabilities or certify regulatory compliance.
+Dependency cycles are warnings unless `validate --strict` is used. The default
+pilot gate allows warnings.
+
+Local analysis needs no remote EAM account. The HTML export embeds its data but
+loads Tailwind and Mermaid from CDNs, so full styling and diagrams require network
+access. Repository patches default to simulation; import/export commands write
+output files. See the [CLI reference](docs/cli_reference.md) for persistence limits.
+
+## ⚖️ License
+
+[Apache License 2.0](LICENSE). Copyright 2026 Tecton contributors.

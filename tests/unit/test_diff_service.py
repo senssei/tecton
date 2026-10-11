@@ -2,7 +2,8 @@
 
 from pathlib import Path
 import pytest
-from tecton.services.diff_service import DiffService
+import subprocess
+from tecton_arch.services.diff_service import DiffService
 
 
 def test_diff_service_rejects_malicious_git_ref(tmp_path: Path):
@@ -31,10 +32,20 @@ def test_diff_service_rejects_invalid_ref():
         )
 
 
-def test_diff_service_valid_git_revision_diff():
+def test_diff_service_valid_git_revision_diff(tmp_path: Path):
     service = DiffService()
-    repo_root = Path(__file__).parents[2]
-    # Compare HEAD with WORKTREE / working directory
+    repo_root = tmp_path / "catalog-repo"
+    repo_root.mkdir()
+    manifest = repo_root / "systems.yaml"
+    manifest.write_text("systems:\n  - id: sys-test\n    name: Original\n", encoding="utf-8")
+    subprocess.run(["git", "init", "-b", "main", str(repo_root)], check=True, capture_output=True)
+    subprocess.run(["git", "add", "systems.yaml"], cwd=repo_root, check=True)
+    subprocess.run(
+        ["git", "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "-c", "commit.gpgsign=false", "commit", "-m", "Baseline"],
+        cwd=repo_root, check=True, capture_output=True,
+    )
+    manifest.write_text("systems:\n  - id: sys-test\n    name: Updated\n", encoding="utf-8")
+    # Compare a known committed catalog with its uncommitted update.
     report = service.compare_git_revisions(
         base_ref="HEAD",
         head_ref="WORKTREE",
@@ -43,3 +54,5 @@ def test_diff_service_valid_git_revision_diff():
     assert report is not None
     assert report.base_ref == "HEAD"
     assert report.head_ref == "WORKTREE"
+
+    assert any(delta.entity_id == "sys-test" and "name" in delta.field_changes for delta in report.deltas)

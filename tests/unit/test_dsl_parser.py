@@ -2,8 +2,8 @@
 
 from pathlib import Path
 import pytest
-from tecton.dsl.parser import C4EAMParser, SymbolTable
-from tecton.dsl.schema import (
+from tecton_arch.dsl.parser import C4EAMParser, SymbolTable
+from tecton_arch.dsl.schema import (
     BusinessCapabilityDef,
     ContainerDef,
     RelationshipDef,

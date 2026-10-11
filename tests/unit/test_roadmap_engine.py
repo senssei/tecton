@@ -3,9 +3,9 @@
 from datetime import date
 import pytest
 
-from tecton.engines.linter import GraphLinter, LintSeverity
-from tecton.dsl.parser import C4EAMParser, CompiledGraph
-from tecton.dsl.schema import (
+from tecton_arch.engines.linter import GraphLinter, LintSeverity
+from tecton_arch.dsl.parser import C4EAMParser, CompiledGraph
+from tecton_arch.dsl.schema import (
     BusinessCapabilityDef,
     PlateauDef,
     SoftwareSystemDef,
@@ -14,7 +14,7 @@ from tecton.dsl.schema import (
     WorkPackageDef,
     WorkPackageStatus,
 )
-from tecton.engines.roadmap_engine import RoadmapEngine
+from tecton_arch.engines.roadmap_engine import RoadmapEngine
 
 
 @pytest.fixture

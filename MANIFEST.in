@@ -1,0 +1,8 @@
+include README.md PYPI_README.md LICENSE NOTICE CONTRIBUTING.md SECURITY.md CHANGELOG.md
+include pyproject.toml
+recursive-include docs *.md *.svg
+recursive-include examples *.yaml *.yml *.json
+recursive-include tests *.py
+recursive-include scripts *.py
+exclude .pypirc
+global-exclude *.py[cod] __pycache__

@@ -1,10 +1,10 @@
 # Tecton Technology Standards Radar
 technologies:
   - id: tech-python-312
-    name: Python 3.12+
+    name: Python 3.11+
     category: runtime
     status: approved
-    description: High-performance typed modern Python runtime
+    description: Minimum supported runtime from pyproject.toml; stable ID retained
 
   - id: tech-pydantic-v2
     name: Pydantic v2

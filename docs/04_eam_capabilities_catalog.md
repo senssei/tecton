@@ -1,114 +1,36 @@
-# Standard EAM Capability Catalog & Metamodel Specification
+# 🧭 Capability catalog
 
-This document provides a generic, industry-standard taxonomy of Enterprise Architecture Management (**EAM**) modules, architectural entity types, and graph relationships based on open frameworks (TOGAF, ArchiMate, BIAN) and modern graph repositories.
+This catalog describes Tecton's implementation, not a certified EAM standard
+or complete TOGAF/ArchiMate conformance. The [manifest reference](manifest_reference.md)
+describes the current metamodel.
 
----
+## Implemented
 
-## 1. Architectural Metamodel & Graph Structure
+| Area | Available capability | Important boundary |
+| --- | --- | --- |
+| Catalog | Systems, components, capabilities, technologies, interfaces, data objects, plateaus and work packages | No separate provider or organizational-unit entities |
+| Ownership | Optional system owner; pilot can require it | No RACI workflow or owner directory |
+| APM | TIME, suitability fields, lifecycle checks, pairwise overlap findings | No inferred business suitability or actual cost savings calculation |
+| BCM | Hierarchy display, direct realization coverage, gaps, hotspots and TIME-derived health | No financial/maturity roll-up or exclusive leading-system rule |
+| TRM | Declared technology statuses/EOL and direct/cascading dependency impact | No live vendor catalog enrichment or vulnerability scanning |
+| Data | Declared objects/interfaces and graph-based lineage/risk heuristics | No technical contract parser or compliance certification |
+| Roadmap | Plateaus, work packages, comparison and Gantt source | No arbitrary timestamp reconstruction or initiative collision solver |
+| Review | Validation and semantic graph diff | Git text merge remains separate from semantic validation |
+| Reporting | Mermaid, Markdown, static/dynamic HTML portal | Full portal styling and diagrams use CDN assets |
+| Interchange | Backstage and ArchiMate/Archi import/export | Supported mappings only; no universal lossless interchange guarantee |
+| Remote APM | GraphQL application fetch/TIME patch adapter | Endpoint-specific schema; not complete central-EAM synchronization |
 
-The structural foundation of an EAM repository is a directed **Metamodel Graph**, where nodes represent **Architecture Entities / Artifacts** and edges represent **Architectural Relations**.
+## Future ideas
 
-```mermaid
-graph TD
-    BC["Business Capability<br/>(Business Function / Ability)"]
-    APP["Application<br/>(Software System / Service)"]
-    TC["Technology Component<br/>(Infrastructure / Stack)"]
-    DO["Data Object<br/>(Business Entity / Domain)"]
-    INT["Interface / Contract<br/>(Endpoint / API / Stream)"]
-    INIT["Initiative / Project<br/>(Transformation Program)"]
-    ORG["Organization / User Group<br/>(Business Unit / Stakeholders)"]
-    PROV["Provider / Vendor<br/>(Software / Cloud Supplier)"]
+- Scoped manifest configuration and stricter rejection of unknown fields.
+- Automated discovery and OpenAPI/AsyncAPI/Protobuf ingestion.
+- Cost/maturity aggregation and explicit realization roles.
+- Owner surveys, freshness checks, editing forms and approval workflows.
+- ID-refactoring commands and safe multi-file graph changes.
+- Full offline portal asset bundling and persistent query cache.
+- Broader EAM/CMDB connectors and organization-wide Git-catalog operation.
+- Natural-language exploration or AI enrichment, if justified by a user need.
 
-    APP -->|"realizes / supports"| BC
-    APP -->|"depends on / relies on"| TC
-    APP -->|"reads & writes"| DO
-    APP -->|"exposes / consumes"| INT
-    APP -->|"utilized by"| ORG
-    APP -->|"impacted by"| INIT
-    TC -->|"supplied by"| PROV
-```
-
-### Standard Entity Types
-| Entity Type | Architectural Role | Generic Node Representation |
-| :--- | :--- | :--- |
-| **`Application`** | Deployed software systems and business application services. | `Application` Artifact / Node |
-| **`BusinessCapability`** | What an organization does, decoupled from implementation technology. | `BusinessCapability` Artifact / Node |
-| **`TechnologyComponent`** | Infrastructure building blocks, runtimes, frameworks, and databases. | `TechnologyComponent` Artifact / Node |
-| **`Interface`** | Communication contracts, API endpoints, message queues, and batch transfers. | `Interface` Artifact / Node |
-| **`DataObject`** | Business information entities (e.g., Customer, Invoice) with privacy tiers. | `DataObject` Artifact / Node |
-| **`Initiative` / `Project`** | Strategic transformation programs, migrations, and release initiatives. | `Project` Artifact / Node |
-| **`UserGroup` / `OrgUnit`** | Organizational divisions, departments, or external user segments. | `UserGroup` Artifact / Node |
-| **`Provider`** | External technology vendors, cloud providers, and SaaS suppliers. | `Provider` Artifact / Node |
-| **`TechnologyStack`** | Categorization of architectural tiers (Frontend, Backend, Database). | `TechnologyStack` Category |
-
----
-
-## 2. Standard Functional Modules in Enterprise Architecture
-
-### Module I: Application Portfolio Management (APM)
-*   **Centralized Inventory:** Single source of truth for software systems, ownership, hosting, and operational status.
-*   **Lifecycle Management:** Standardized phase tracking (*Plan*, *Phase-in*, *Active*, *Phase-out*, *End-of-life*).
-*   **Gartner TIME Framework:** Objective categorization into *Tolerate*, *Invest*, *Migrate*, and *Eliminate*.
-*   **Multidimensional Fit Assessment:** Business Fit (alignment, criticality) and Technical Fit (quality, debt).
-*   **Portfolio Rationalization:** Identification of redundant, duplicative, or underutilized software assets.
-
----
-
-### Module II: Business Capability Management (BCM)
-*   **Hierarchical Capability Trees:** Structured functional decomposition (L1 ➔ L2 ➔ L3).
-*   **Capability Realization Mapping:** Linking applications to supported capabilities with role designations.
-*   **Heatmaps & Maturity Modeling:** Color-coded visualization of coverage, cost distribution, and maturity.
-*   **Architectural Gap Analysis:** Uncovering business capabilities lacking technical realization.
-*   **Industry Reference Catalogs:** Standardized capability baselines (e.g., BIAN, eTOM).
-
----
-
-### Module III: Technology Risk & Obsolescence Management (TRM)
-*   **Infrastructure Component Catalog:** Tracking software packages, runtime versions, databases, and OS platforms.
-*   **Obsolescence Tracking:** Monitoring vendor End-of-Life (EOL) and End-of-Support (EOS) milestones.
-*   **Technology Standards Governance:** Classifying technologies as *Approved*, *Under Evaluation*, or *Prohibited*.
-*   **Risk Cascade Modeling:** Identifying vulnerability propagation from obsolete infrastructure to critical business applications.
-
----
-
-### Module IV: Architecture Roadmap & Target State Planning
-*   **State Modeling:** Defining current (*As-Is*) versus desired future (*To-Be*) architectural baselines.
-*   **Milestone & Schedule Alignment:** Coordinating transformation initiatives with application phase transitions.
-*   **Architectural Impact Analysis:** Analyzing cascading dependency impacts when decommissioning systems.
-
----
-
-### Module V: Data & Interface Architecture
-*   **Interface Catalog:** Recording API protocols (REST, GraphQL, gRPC), event brokers, and schemas.
-*   **Data Object Modeling:** Cataloging key domain entities with regulatory and privacy classifications (e.g., GDPR).
-*   **End-to-End Data Lineage:** Mapping data flow trajectories across enterprise application boundaries.
-
----
-
-### Module VI: Visualizations, Reporting & Presentation
-*   **Landscape Reports:** Two-dimensional grid views mapping capabilities against organizations and applications.
-*   **Matrix Reports:** Pivot matrices displaying intersections across arbitrary entity pairs.
-*   **Portfolio Quadrant Charts:** 2D scatter plots evaluating business fit versus technical fit.
-*   **Roadmap Gantt Views:** Timeline visualizations of lifecycle milestones and project schedules.
-*   **Architectural Diagrams:** Live diagrams reflecting real-time repository state.
-
----
-
-### Module VII: Governance, Crowdsourcing & Quality Assurance
-*   **Stakeholder Surveys:** Automated distributed data collection from application owners.
-*   **Quality Seals & Completeness Metrics:** Formal certification of entity completeness and timeliness.
-*   **RACI Responsibility Subscriptions:** Explicit role assignments (*Responsible*, *Accountable*, *Consulted*, *Informed*).
-
----
-
-### Module VIII: AI-Assisted Architecture
-*   Natural language semantic querying over enterprise graph inventories.
-*   Automated summarization and rationalization recommendations.
-*   Enrichment of missing entity metadata and automated categorization.
-
----
-
-### Module IX: Integration Protocols & Graph APIs
-*   **Graph / REST APIs:** Traversal of entities, relationship edges, and delta mutation patches.
-*   **Event Subscriptions (Webhooks):** Real-time notifications upon entity state transitions.
-*   **Ecosystem Connectors:** Integrations with CMDBs (ServiceNow), issue trackers (Jira), and business process tools.
+These are candidates, not commitments or CLI commands. A new capability should
+include source-of-truth ownership, failure behavior and validation evidence
+before being described as available.

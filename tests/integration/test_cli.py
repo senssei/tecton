@@ -1,7 +1,7 @@
 """Integration tests for Tecton CLI commands using CliRunner."""
 
 from typer.testing import CliRunner
-from tecton.cli.main import app
+from tecton_arch.cli.main import app
 
 runner = CliRunner()
 

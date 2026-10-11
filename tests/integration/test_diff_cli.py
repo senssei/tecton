@@ -1,9 +1,10 @@
 """Integration tests for CLI diff command."""
 
 import json
+import shutil
 from pathlib import Path
 from typer.testing import CliRunner
-from tecton.cli.main import app
+from tecton_arch.cli.main import app
 
 runner = CliRunner()
 
@@ -41,11 +42,15 @@ def test_cli_diff_format_json():
     assert len(data["deltas"]) > 0
 
 
-def test_cli_diff_fail_on_risk_flag():
+def test_cli_diff_fail_on_risk_flag(tmp_path):
     base_ws = Path(__file__).parents[2] / "examples" / "c4_eam_workspace"
-    head_ws = Path(__file__).parents[2] / "examples" / "dogfood" / "tecton_c4_workspace"
+    head_ws = tmp_path / "head"
+    shutil.copytree(base_ws, head_ws)
+    (head_ws / "unmapped.yaml").write_text(
+        "capabilities:\n  - id: cap-new-gap\n    name: Unmapped pilot capability\n    level: L1\n",
+        encoding="utf-8",
+    )
 
-    # Since comparing these two different workspaces creates new gaps, fail_on_risk exits with 1
     result = runner.invoke(app, ["diff", str(base_ws), str(head_ws), "--fail-on-risk"])
     assert result.exit_code == 1
     assert "ARCHITECTURE GATE BLOCKED" in result.output

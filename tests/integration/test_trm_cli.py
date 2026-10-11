@@ -2,7 +2,7 @@
 
 from pathlib import Path
 from typer.testing import CliRunner
-from tecton.cli.main import app
+from tecton_arch.cli.main import app
 
 runner = CliRunner(env={"COLUMNS": "200"})
 

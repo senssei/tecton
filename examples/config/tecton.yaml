@@ -14,7 +14,7 @@ redundancy:
 
 # Remote EAM Graph Repository (Optional for online sync)
 repository:
-  url: "https://example-eam.local/graphql"
-  token: "sec_token_demo"
+  url: null  # Set TECTON_API_URL only for a compatible remote endpoint
+  token: null  # Use TECTON_API_TOKEN; do not commit real credentials
   timeout_seconds: 30
   verify_ssl: true

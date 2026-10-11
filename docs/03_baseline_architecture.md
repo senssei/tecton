@@ -1,150 +1,82 @@
-# Baseline Architecture Specification & APM Module Design
+# 🧱 Implemented architecture
 
-## 1. Architectural Purpose and Principles
+Tecton is a Python modular monolith. Local architecture manifests are compiled
+into an in-memory graph; services evaluate that graph and delivery channels
+present results. The source namespace is `tecton_arch`.
 
-**Tecton** implements **Hexagonal Architecture (Ports and Adapters / Clean Architecture)**, establishing complete decoupling between core analytical domain logic and external repository mechanisms.
-
-The system ensures:
-1. A pure, self-contained **Core Domain** completely independent of external API schemas or vendor SDKs.
-2. Explicit **Repository Ports** defining inbound and outbound contracts, enabling interchangeable infrastructure adapters (remote Graph APIs, local JSON/YAML files, in-memory test doubles).
-3. Deterministic **Analytic Engines** that resolve the critical gaps identified in the adversarial analysis.
-4. A unified **CLI Toolchain** and sovereign visual exporters targeting the open **Mermaid** and **Markdown** standards.
-
----
-
-## 2. Hexagonal Architecture Blueprint
+## Layers and data flow
 
 ```mermaid
 flowchart TD
-    subgraph Presentation_Layer["Presentation Layer (Inbound Adapters)"]
-        CLI["CLI Commands: tecton apm [list|analyze|export-matrix|patch-time]"]
-        MermaidExp["Exporter: Mermaid quadrantChart"]
-        MDExp["Exporter: Living Markdown Report"]
-    end
-
-    subgraph Application_Layer["Application Layer (Orchestration)"]
-        APMService["APMService (Orchestrating Ingestion, Evaluation & Mutations)"]
-    end
-
-    subgraph Domain_Layer["Domain Layer (Core Domain & Engines)"]
-        TimeEngine["TimeScoringEngine (TIME Classifier)"]
-        RedundancyEngine["RedundancyDetectionEngine (Weighted Jaccard)"]
-        LifecycleVal["LifecycleValidator (Chronological Consistency)"]
-        DomainModels["Models: Application, Lifecycle, Suitability, RedundancyCluster"]
-    end
-
-    subgraph Infrastructure_Layer["Infrastructure Layer (Outbound Adapters)"]
-        RepoPort["<<interface>> ArchitectureRepositoryPort"]
-        GraphAdapter["GraphQLRepositoryAdapter (Remote Graph API)"]
-        MockAdapter["InMemoryRepositoryAdapter (Offline / Testing / CI)"]
-        LocalFileAdapter["FileRepositoryAdapter (JSON / YAML / CSV)"]
-    end
-
-    CLI --> APMService
-    APMService --> Domain_Layer
-    APMService --> RepoPort
-    RepoPort <|.. GraphAdapter
-    RepoPort <|.. MockAdapter
-    RepoPort <|.. LocalFileAdapter
-    APMService --> MermaidExp
-    APMService --> MDExp
+    CLI["CLI / FastAPI / Portal builder"] --> App["TectonApp and application services"]
+    App --> Engines["Validation and analytic engines"]
+    App --> Workspace["Workspace and repository adapters"]
+    App --> Export["Exporter registry"]
+    Workspace --> Parser["YAML / JSON parser"]
+    Parser --> Graph["CompiledGraph and symbol table"]
+    Engines --> Graph
+    Export --> Output["Mermaid / Markdown / HTML / interchange"]
 ```
 
----
+| Package | Responsibility |
+| --- | --- |
+| `core` | Application, lifecycle, scoring/configuration models |
+| `dsl` | EAM manifest schemas, parsing, symbol table and graph indexes |
+| `engines` | Validation, TIME, overlap, capabilities, technology, lineage, roadmap and diff |
+| `adapters` | In-memory, legacy file, Git workspace and GraphQL I/O |
+| `services` | Domain-specific orchestration, including APM and Git revision diff |
+| `application` | `TectonApp`, workspace abstraction, DTOs and exporters |
+| `cli`, `server`, `portal` | Argument/HTTP translation, display and HTML generation |
+| `connectors`, `exporters` | Supported interchange mappings and textual reports |
 
-## 3. Core Business Logic & Algorithmic Rules
+The AST fitness test prohibits direct imports of engines, connectors and the
+DSL parser in delivery packages, and engine imports in the DSL package. CLI
+commands can still delegate to domain services; this is not total facade-only
+or dependency-inversion enforcement. `CompiledGraph` remains a concrete shared type.
 
-### A. Gartner TIME Evaluation Framework
-Evaluation is determined by two normalized dimensions on a 1.0 – 5.0 scale:
-*   **Business Fit (Functional Suitability):** Process coverage, criticality, business user value.
-*   **Technical Fit (Technical Suitability):** Architecture quality, maintainability, stability, technical debt.
+## Algorithms and configuration
 
-```
-                      High (>= 3.5)
-                            ▲
-                            │
-             TOLERATE       │        INVEST
-        (High Business Fit, │   (High Business Fit,
-          Low Tech Fit)     │     High Tech Fit)
-    ────────────────────────┼────────────────────────► Technical Fit
-                            │                        (>= 3.5)
-            ELIMINATE       │        MIGRATE
-        (Low Business Fit,  │   (Low Business Fit,
-          Low Tech Fit)     │     High Tech Fit)
-                            │
-                            ▼ Low
-```
+TIME classifies functional/technical suitability on the 1–5 scale with default
+thresholds of 3.5. This implementation's mapping is:
 
-### B. Functional Redundancy Clustering (Weighted Jaccard Metric)
-Functional similarity between applications $A_1$ and $A_2$ is computed as:
-$$J(A_1, A_2) = w_c \cdot \frac{|C_1 \cap C_2|}{|C_1 \cup C_2|} + w_u \cdot \frac{|U_1 \cap U_2|}{|U_1 \cup U_2|}$$
-where:
-*   $C_1, C_2$ – sets of realized business capabilities,
-*   $U_1, U_2$ – sets of supported user groups or organizational units,
-*   $w_c, w_u$ – configurable weights (defaults: $w_c = 0.70, w_u = 0.30$).
+| Functional fit | Technical fit | Result |
+| --- | --- | --- |
+| High | High | `INVEST` |
+| High | Low | `TOLERATE` |
+| Low | High | `MIGRATE` |
+| Low | Low | `ELIMINATE` |
+| Either missing | Any | `UNKNOWN` |
 
-Pairs with $J(A_1, A_2) \ge \theta$ (default $\theta = 0.70$) are clustered as functional redundancies with automated rationalization recommendations.
+These project-specific labels follow the existing code and tests; review them
+against your portfolio methodology before using the recommendations.
 
-### C. Safety-First Mutation Policy
-All mutating commands interacting with repositories operate by default in **`--dry-run`** mode. Permanent updates require explicit `--apply` invocation.
+Overlap compares application pairs using weighted Jaccard scores, defaulting
+to 0.7 for capabilities and 0.3 for user groups, with a 0.7 finding threshold.
+If only one dimension has data, its unweighted score is used; if neither has
+data, similarity is zero. Findings are pairs, not transitive merged clusters.
+Pairwise comparison is quadratic in the number of applications.
 
----
+BCM evaluates direct system-to-capability mappings and stored TIME classifications.
+It does not calculate cost/maturity roll-ups over descendants. Graph adjacency
+indexes provide direct lookup of incoming/outgoing edge lists; a traversal still
+costs time proportional to visited nodes and edges.
 
-## 4. Module Structure and Code Contracts
+## State and time
 
-### A. Core Domain Models (`src/tecton/core/models.py`)
-```python
-from enum import Enum
-from pydantic import BaseModel, Field
+`Workspace` accepts a path, a compiled graph, or an application repository.
+Graph-based use cases require a graph-capable source. Git TIME persistence writes
+a temporary file, replaces one source file, then reloads the graph. It does not
+provide atomic multi-file mutations or a general JSON Patch implementation.
 
-class TimeQuadrant(str, Enum):
-    INVEST = "INVEST"
-    TOLERATE = "TOLERATE"
-    MIGRATE = "MIGRATE"
-    ELIMINATE = "ELIMINATE"
-    UNKNOWN = "UNKNOWN"
+Lifecycle validation, the graph linter, and TRM expose selected `as_of_date`
+parameters. Lifecycle inference, roadmap analysis/rendering and semantic diff
+still have current-date dependencies. There is no global fixed-date CLI option;
+results involving dates may change between runs.
 
-class LifecyclePhase(str, Enum):
-    PLAN = "plan"
-    PHASE_IN = "phaseIn"
-    ACTIVE = "active"
-    PHASE_OUT = "phaseOut"
-    END_OF_LIFE = "endOfLife"
+## Verification
 
-class Application(BaseModel):
-    id: str
-    name: str
-    business_criticality: str | None = None
-    functional_suitability: float | None = None
-    technical_suitability: float | None = None
-    time_classification: TimeQuadrant = TimeQuadrant.UNKNOWN
-    current_phase: LifecyclePhase | None = None
-    capabilities: list[str] = Field(default_factory=list)
-    user_groups: list[str] = Field(default_factory=list)
-```
-
-### B. Outbound Repository Port (`src/tecton/adapters/base.py`)
-```python
-from typing import Any, Protocol
-
-class ArchitectureRepositoryPort(Protocol):
-    def fetch_applications(self) -> list[Application]: ...
-    def apply_patches(self, entity_id: str, patches: list[dict[str, Any]], dry_run: bool = True) -> dict[str, Any]: ...
-```
-
-### C. Deterministic Analytic Engines (`src/tecton/engines/`)
-*   `TimeScoringEngine`: Threshold-driven quadrant classification.
-*   `RedundancyDetectionEngine`: Weighted Jaccard set similarity clustering.
-*   `LifecycleValidator`: Chronological order and anomaly governance.
-
-### D. Sovereign Visual Exporters (`src/tecton/exporters/`)
-*   `MermaidExporter`: Generates clean, native `quadrantChart` Mermaid code.
-*   `MarkdownExporter`: Assembles executive living documentation reports.
-
----
-
-## 5. Verification Strategy
-*   **Engine Unit Tests:** Exhaustive parameterized unit tests verifying all quadrants, boundary scores, empty sets, and chronological anomalies.
-*   **Adapter Unit Tests:** Offline verification of JSON/YAML hydration and JSON Patch simulation.
-*   **Service Integration Tests:** End-to-end orchestration tests auditing portfolios and confirming patch preparation.
-*   **CLI Integration Tests:** Automated runner invocation checking output formatting, error handling, and exit codes.
+Unit tests cover analytical rules, schemas, graph checks, adapters and connectors.
+Integration tests cover CLI commands, API endpoints, the pilot workflow and
+application facade. CI also checks documentation examples and distribution builds.
+Performance targets in the [quality attribute notes](05_attribute_driven_design.md)
+are design goals, not published benchmarks.

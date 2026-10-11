@@ -2,8 +2,8 @@
 
 from pathlib import Path
 import pytest
-from tecton.adapters.git_adapter import GitRepositoryAdapter
-from tecton.core.models import TimeQuadrant
+from tecton_arch.adapters.git_adapter import GitRepositoryAdapter
+from tecton_arch.core.models import TimeQuadrant
 
 
 def test_git_adapter_loads_c4_workspace():

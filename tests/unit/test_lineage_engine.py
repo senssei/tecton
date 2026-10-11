@@ -1,9 +1,9 @@
 """Unit tests for LineageEngine and data compliance rules."""
 
 import pytest
-from tecton.core.models import TimeQuadrant
-from tecton.dsl.parser import CompiledGraph, SymbolTable
-from tecton.dsl.schema import (
+from tecton_arch.core.models import TimeQuadrant
+from tecton_arch.dsl.parser import CompiledGraph, SymbolTable
+from tecton_arch.dsl.schema import (
     DataClassification,
     DataObjectDef,
     InterfaceDef,
@@ -12,7 +12,7 @@ from tecton.dsl.schema import (
     TechnologyDef,
     TechnologyStatus,
 )
-from tecton.engines.lineage_engine import LineageEngine
+from tecton_arch.engines.lineage_engine import LineageEngine
 
 
 @pytest.fixture

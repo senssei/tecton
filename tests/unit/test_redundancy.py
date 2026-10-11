@@ -1,7 +1,7 @@
 """Unit tests for RedundancyDetectionEngine."""
 
-from tecton.core.models import Application, RedundancyConfig
-from tecton.engines.redundancy import RedundancyDetectionEngine
+from tecton_arch.core.models import Application, RedundancyConfig
+from tecton_arch.engines.redundancy import RedundancyDetectionEngine
 
 
 def test_jaccard_similarity_calculation() -> None:

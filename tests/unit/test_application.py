@@ -3,7 +3,7 @@
 from pathlib import Path
 import pytest
 
-from tecton.application import (
+from tecton_arch.application import (
     ExportError,
     TectonApp,
     Workspace,

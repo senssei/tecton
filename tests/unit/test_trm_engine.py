@@ -1,9 +1,9 @@
 """Unit tests for Technology Risk & Obsolescence Management (TRM) Engine."""
 
 from datetime import date, timedelta
-from tecton.dsl.parser import C4EAMParser
-from tecton.dsl.schema import TechnologyStatus
-from tecton.engines.trm_engine import TRMEngine
+from tecton_arch.dsl.parser import C4EAMParser
+from tecton_arch.dsl.schema import TechnologyStatus
+from tecton_arch.engines.trm_engine import TRMEngine
 
 
 def test_trm_engine_evaluate_technologies():

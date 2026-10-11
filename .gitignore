@@ -57,3 +57,7 @@ dmypy.json
 # Secrets & Config
 *.env.local
 tecton.secrets.yaml
+
+# Local publishing credentials and environment files
+.pypirc
+.env.*

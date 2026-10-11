@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from tecton.server.app import create_app
+from tecton_arch.server.app import create_app
 
 
 @pytest.fixture

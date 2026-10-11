@@ -2,11 +2,11 @@
 
 Rules:
 1. Delivery layer (`cli`, `server`, `portal`) must NOT import directly from:
-   - `tecton.engines`
-   - `tecton.connectors`
-   - `tecton.dsl.parser`
-   Delivery must coordinate use cases via `tecton.application` (or `tecton.core`).
-2. Domain / DSL layer (`tecton.dsl`) must NOT import from `tecton.engines`.
+   - `tecton_arch.engines`
+   - `tecton_arch.connectors`
+   - `tecton_arch.dsl.parser`
+   Delivery must coordinate use cases via `tecton_arch.application` (or `tecton_arch.core`).
+2. Domain / DSL layer (`tecton_arch.dsl`) must NOT import from `tecton_arch.engines`.
 """
 
 import ast
@@ -25,7 +25,7 @@ class ImportViolation(NamedTuple):
 def scan_architecture_violations(src_dir: Path | None = None) -> list[ImportViolation]:
     """Scan source code AST for hexagonal and delivery boundary violations, resolving relative imports."""
     if src_dir is None:
-        src_dir = Path(__file__).parents[2] / "src" / "tecton"
+        src_dir = Path(__file__).parents[2] / "src" / "tecton_arch"
 
     violations: list[ImportViolation] = []
 
@@ -40,9 +40,9 @@ def scan_architecture_violations(src_dir: Path | None = None) -> list[ImportViol
 
             # Determine package tuple for resolving relative imports
             if f == "__init__.py":
-                pkg_parts = ("tecton",) + module_parts[:-1]
+                pkg_parts = ("tecton_arch",) + module_parts[:-1]
             else:
-                pkg_parts = ("tecton",) + module_parts[:-1]
+                pkg_parts = ("tecton_arch",) + module_parts[:-1]
 
             tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
             for node in ast.walk(tree):
@@ -54,7 +54,7 @@ def scan_architecture_violations(src_dir: Path | None = None) -> list[ImportViol
                     if node.level > 0:
                         # Relative import resolution
                         cutoff = len(pkg_parts) - (node.level - 1)
-                        base_parts = pkg_parts[:cutoff] if cutoff > 0 else ("tecton",)
+                        base_parts = pkg_parts[:cutoff] if cutoff > 0 else ("tecton_arch",)
                         if node.module:
                             resolved = ".".join(base_parts) + "." + node.module
                         else:
@@ -66,7 +66,7 @@ def scan_architecture_violations(src_dir: Path | None = None) -> list[ImportViol
                 for imported in imported_modules:
                     # Rule 1: Delivery layer isolation
                     if layer in ("cli", "server", "portal"):
-                        for forbidden in ("tecton.engines", "tecton.connectors", "tecton.dsl.parser"):
+                        for forbidden in ("tecton_arch.engines", "tecton_arch.connectors", "tecton_arch.dsl.parser"):
                             if imported == forbidden or imported.startswith(forbidden + "."):
                                 violations.append(
                                     ImportViolation(
@@ -79,7 +79,7 @@ def scan_architecture_violations(src_dir: Path | None = None) -> list[ImportViol
 
                     # Rule 2: DSL must not depend on engines
                     if layer == "dsl":
-                        if imported == "tecton.engines" or imported.startswith("tecton.engines."):
+                        if imported == "tecton_arch.engines" or imported.startswith("tecton_arch.engines."):
                             violations.append(
                                 ImportViolation(
                                     file_path=str(rel),

@@ -1,9 +1,9 @@
 """Integration tests for APMService using fixture data."""
 
 from pathlib import Path
-from tecton.adapters.file_adapter import FileRepositoryAdapter
-from tecton.core.models import RedundancyConfig, TimeConfig, TimeQuadrant
-from tecton.services.apm_service import APMService
+from tecton_arch.adapters.file_adapter import FileRepositoryAdapter
+from tecton_arch.core.models import RedundancyConfig, TimeConfig, TimeQuadrant
+from tecton_arch.services.apm_service import APMService
 
 
 def test_apm_service_full_analysis() -> None:

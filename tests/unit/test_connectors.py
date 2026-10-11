@@ -1,8 +1,8 @@
 """Unit tests for Open EA Connectors (Backstage and ArchiMate)."""
 
-from tecton.connectors.archimate import ArchiMateConnector
-from tecton.connectors.backstage import BackstageConnector
-from tecton.dsl.parser import C4EAMParser
+from tecton_arch.connectors.archimate import ArchiMateConnector
+from tecton_arch.connectors.backstage import BackstageConnector
+from tecton_arch.dsl.parser import C4EAMParser
 
 
 def test_backstage_connector_export_catalog():
@@ -311,7 +311,7 @@ systems:
 
 
 def test_id_mapper_collision_detection():
-    from tecton.connectors.id_mapper import IdCollisionError, IdMapper
+    from tecton_arch.connectors.id_mapper import IdCollisionError, IdMapper
     import pytest
 
     mapper = IdMapper()

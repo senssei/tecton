@@ -1,8 +1,8 @@
 """Unit tests for LifecycleValidator."""
 
 from datetime import date
-from tecton.core.models import Application, Lifecycle, LifecyclePhase, LifecyclePhaseDate
-from tecton.engines.lifecycle_validator import LifecycleValidator
+from tecton_arch.core.models import Application, Lifecycle, LifecyclePhase, LifecyclePhaseDate
+from tecton_arch.engines.lifecycle_validator import LifecycleValidator
 
 
 def test_valid_lifecycle() -> None:

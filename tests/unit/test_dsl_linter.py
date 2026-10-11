@@ -1,8 +1,8 @@
 """Unit tests for GraphLinter and architectural quality gates."""
 
 import pytest
-from tecton.engines.linter import GraphLinter, LintSeverity
-from tecton.dsl.parser import C4EAMParser
+from tecton_arch.engines.linter import GraphLinter, LintSeverity
+from tecton_arch.dsl.parser import C4EAMParser
 
 
 def test_linter_passes_on_valid_graph():

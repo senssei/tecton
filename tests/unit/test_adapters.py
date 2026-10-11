@@ -1,9 +1,9 @@
 """Unit tests for Repository Adapters."""
 
 from pathlib import Path
-from tecton.adapters.file_adapter import FileRepositoryAdapter
-from tecton.adapters.in_memory import InMemoryRepositoryAdapter
-from tecton.core.models import Application, TimeQuadrant
+from tecton_arch.adapters.file_adapter import FileRepositoryAdapter
+from tecton_arch.adapters.in_memory import InMemoryRepositoryAdapter
+from tecton_arch.core.models import Application, TimeQuadrant
 
 
 def test_in_memory_adapter_crud() -> None:
