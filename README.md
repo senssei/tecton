@@ -71,6 +71,9 @@ flowchart LR
     Graph --> Portal["Read-only portal"]
 ```
 
+Catalog review, complete semantic diff, cost reports and resource/budget checks
+are described in the [catalog and planning guide](docs/catalog_planning.md).
+
 ## 📖 Documentation
 
 - [Getting started](docs/getting_started.md) — installation and your first model.
@@ -87,9 +90,8 @@ inspect deployed systems, scan vulnerabilities or certify regulatory compliance.
 Dependency cycles are warnings unless `validate --strict` is used. The default
 pilot gate allows warnings.
 
-Local analysis needs no remote EAM account. The HTML export embeds its data but
-loads Tailwind and Mermaid from CDNs, so full styling and diagrams require network
-access. Repository patches default to simulation; import/export commands write
+Local analysis needs no remote EAM account. The HTML export embeds its data and
+bundles Tailwind, Mermaid and D3 for fully offline styling and diagrams. Repository patches default to simulation; import/export commands write
 output files. See the [CLI reference](docs/cli_reference.md) for persistence limits.
 
 ## ⚖️ License

@@ -15,11 +15,13 @@ from tecton_arch.engines.roadmap_engine import (
 class RoadmapService:
     """Service orchestrating plateaus, work packages, roadmap analysis, and Gantt charts."""
 
-    def __init__(self, graph_or_path: CompiledGraph | Path | str) -> None:
+    def __init__(self, graph_or_path: CompiledGraph | Path | str, config=None) -> None:
         if isinstance(graph_or_path, CompiledGraph):
             self.graph = graph_or_path
         else:
-            self.graph = C4EAMParser().parse_directory(graph_or_path)
+            from tecton_arch.core.config import TectonConfig
+            config = config or TectonConfig.load(workspace_dir=Path(graph_or_path) if Path(graph_or_path).is_dir() else Path(graph_or_path).parent)
+            self.graph = C4EAMParser(config=config).parse_directory(graph_or_path)
         self.engine = RoadmapEngine(self.graph)
 
     def list_plateaus(self) -> list[PlateauDef]:

@@ -3,6 +3,7 @@
 import typer
 from tecton_arch import __version__
 from rich.console import Console
+from tecton_arch.cli.catalog_cli import app as catalog_app
 from tecton_arch.cli.apm_cli import app as apm_app
 from tecton_arch.cli.bcm_cli import app as bcm_app
 from tecton_arch.cli.data_cli import app as data_app
@@ -22,6 +23,7 @@ app = typer.Typer(
 
 console = Console()
 
+app.add_typer(catalog_app, name="catalog")
 app.add_typer(apm_app, name="apm")
 app.add_typer(bcm_app, name="bcm")
 app.add_typer(trm_app, name="trm")

@@ -97,6 +97,10 @@ def test_live_radar_uses_real_api_data(page):
     model = TectonApp(ROOT / 'examples/c4_eam_workspace')
     snapshot = model.portal_snapshot()
     response_map = {
+        '/api/v1/catalog/freshness': model.catalog_freshness(),
+        '/api/v1/apm/costs': model.apm_costs(),
+        '/api/v1/roadmap/business-case': model.roadmap_business_cases(),
+        '/api/v1/roadmap/feasibility': model.roadmap_feasibility(),
         '/api/v1/overview': model.overview().model_dump(mode='json'),
         '/api/v1/validate': model.validate().model_dump(mode='json'),
         '/api/v1/apm/applications': model.apm_applications(),
@@ -236,3 +240,72 @@ def test_portal_fully_offline_bundled_mermaid_and_tailwind(page, tmp_path):
     page.wait_for_selector("#mermaid-time-matrix svg")
     assert page.locator("#mermaid-time-matrix svg").count() >= 1
 
+
+
+def test_planning_reports_offline_and_immutable_date(page, tmp_path):
+    from datetime import date
+    model=TectonApp(ROOT/'examples/planning',as_of_date=date(2026,6,1))
+    path=PortalBuilder.export_portal(model,tmp_path)
+    errors=[]
+    page.on('pageerror',lambda error: errors.append(str(error)))
+    page.goto(path.as_uri())
+    page.locator('[data-tab="planning"]').click()
+    assert page.locator('#evaluation-date').input_value()=='2026-06-01'
+    assert page.locator('#evaluation-date').is_disabled()
+    assert '300.30' in page.locator('#portfolio-costs').inner_text()
+    assert 'violations detected' in page.locator('#plan-feasibility').inner_text()
+    assert 'TEAM_CAPACITY_EXCEEDED' in page.locator('#plan-feasibility').inner_text()
+    assert 'Annual savings after migration' in page.locator('#business-cases').inner_text()
+    page.set_viewport_size({'width':390,'height':844})
+    assert page.locator('#plan-feasibility').is_visible()
+    assert not errors
+
+
+def test_live_portal_uses_one_date_for_all_reports(page):
+    import json
+    from datetime import date
+    from urllib.parse import urlparse, parse_qs
+    requests=[]
+    def serve(route):
+        url=urlparse(route.request.url)
+        if url.path=='/':
+            route.fulfill(body=PortalBuilder.build_dynamic_portal_html(),content_type='text/html')
+            return
+        target=parse_qs(url.query).get('as_of_date',['2026-06-01'])[0]
+        requests.append((url.path,target))
+        model=TectonApp(ROOT/'examples/planning',as_of_date=date.fromisoformat(target))
+        payloads={
+            '/api/v1/overview':model.overview().model_dump(mode='json'),
+            '/api/v1/validate':model.validate().model_dump(mode='json'),
+            '/api/v1/apm/applications':model.apm_applications(),
+            '/api/v1/bcm/capabilities':model.bcm_capabilities(),
+            '/api/v1/bcm/coverage':model.bcm_analysis(),
+            '/api/v1/trm/technologies':model.trm_evaluation(),
+            '/api/v1/data/objects':model.data_objects(),
+            '/api/v1/data/interfaces':model.interfaces(),
+            '/api/v1/data/flow-diagrams':model.data_flow_diagrams(),
+            '/api/v1/roadmap/plateaus':model.list_plateaus(),
+            '/api/v1/roadmap/work-packages':model.list_work_packages(),
+            '/api/v1/catalog/freshness':model.catalog_freshness(),
+            '/api/v1/apm/costs':model.apm_costs(),
+            '/api/v1/roadmap/business-case':model.roadmap_business_cases(),
+            '/api/v1/roadmap/feasibility':model.roadmap_feasibility(),
+        }
+        if url.path.startswith('/api/v1/diagrams/'):
+            payload={'content':model.export('mermaid',{'diagram_type':url.path.rsplit('/',1)[1]}).content}
+        elif url.path.startswith('/api/v1/data/lineage/'):
+            payload=model.data_lineage(url.path.rsplit('/',1)[1])
+        else:
+            payload=payloads.get(url.path,{})
+        route.fulfill(body=json.dumps(payload,default=str),content_type='application/json')
+    page.route('http://planning.test/**',serve)
+    page.goto('http://planning.test/')
+    page.wait_for_function("state.applications.length === 2")
+    page.wait_for_function("!document.querySelector('#mermaid-data-lineage').textContent.includes('Loading')")
+    requests.clear()
+    page.locator('#evaluation-date').fill('2026-06-01')
+    page.locator('#evaluation-date').dispatch_event('change')
+    page.wait_for_function("state.asOfDate === '2026-06-01' && !document.querySelector('#evaluation-date').disabled")
+    assert requests and all(target=='2026-06-01' for _,target in requests)
+    page.locator('[data-tab="planning"]').click()
+    assert '300.30' in page.locator('#portfolio-costs').inner_text()

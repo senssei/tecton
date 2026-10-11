@@ -64,3 +64,4 @@ class ExportResultDto(BaseModel):
     media_type: str
     file_extension: str
     output_path: Optional[str] = None
+    warnings: list[str] = Field(default_factory=list)

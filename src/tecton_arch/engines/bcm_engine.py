@@ -24,11 +24,17 @@ class CapabilityCoverage(BaseModel):
     health: CapabilityHealth = CapabilityHealth.UNMAPPED
     time_distribution: dict[str, int] = Field(default_factory=dict)
     description: str | None = None
+    aggregated_system_ids: list[str] = Field(default_factory=list)
+    leaf_coverage_percentage: float = 0
+    weighted_leaf_coverage_percentage: float = 0
+    annual_costs: dict[str, Any] = Field(default_factory=dict)
 
 
 class BCMReport(BaseModel):
     """Comprehensive Business Capability Management assessment report."""
 
+    aggregation_status: str = "available"
+    issues: list[str] = Field(default_factory=list)
     total_capabilities: int
     mapped_capabilities: int
     orphaned_capabilities: list[str] = Field(default_factory=list)  # Gaps / 0 systems
@@ -107,6 +113,41 @@ class BCMEngine:
 
             if len(realizing) >= self.hotspot_threshold:
                 overprovisioned.append(c_id)
+
+        # Aggregate independently of direct coverage. Detect cycles before traversing.
+        children = {cid: sorted(c.id for c in caps_map.values() if c.parent_id == cid) for cid in caps_map}
+        cache = {}
+        def descendants(cid, visiting):
+            if cid in visiting:
+                raise ValueError("Capability hierarchy cycle prevents aggregation")
+            if cid in cache:
+                return cache[cid]
+            result = {cid}
+            for child in children[cid]:
+                result.update(descendants(child, visiting | {cid}))
+            cache[cid] = result
+            return result
+        for cid, coverage in coverages.items():
+            try:
+                subtree = descendants(cid, set())
+            except ValueError as exc:
+                return BCMReport(total_capabilities=len(caps_map), mapped_capabilities=mapped_count, orphaned_capabilities=orphaned, overprovisioned_capabilities=overprovisioned, coverages=coverages, aggregation_status="unavailable", issues=[str(exc)])
+            leaves = sorted(c for c in subtree if not children[c])
+            covered = [c for c in leaves if coverages[c].realizing_system_ids]
+            coverage.aggregated_system_ids = sorted({s for c in subtree for s in coverages[c].realizing_system_ids})
+            coverage.leaf_coverage_percentage = len(covered) / len(leaves) * 100
+            coverage.weighted_leaf_coverage_percentage = sum(caps_map[c].importance for c in covered) / sum(caps_map[c].importance for c in leaves) * 100
+            from decimal import Decimal
+            totals, missing = {}, []
+            for app in applications:
+                if app.id not in coverage.aggregated_system_ids:
+                    continue
+                cost = app.metadata.get("annual_cost")
+                if cost:
+                    totals[cost["currency"]] = totals.get(cost["currency"], Decimal(0)) + Decimal(cost["amount"])
+                else:
+                    missing.append(app.id)
+            coverage.annual_costs = {"totals_by_currency": {c: str(v) for c, v in sorted(totals.items())}, "missing_system_ids": sorted(missing), "complete": not missing}
 
         return BCMReport(
             total_capabilities=len(caps_map),

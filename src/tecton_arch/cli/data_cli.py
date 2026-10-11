@@ -1,6 +1,9 @@
 """CLI subcommands for Data Architecture, Interface Contracts, and Lineage (data)."""
 
 from pathlib import Path
+from tecton_arch.cli.catalog_cli import resolve_date
+from tecton_arch.core.config import TectonConfig
+from datetime import date
 from typing import Annotated, Optional
 import typer
 from rich.console import Console
@@ -24,11 +27,12 @@ def _resolve_source(source: str | None) -> Path:
 
 @app.command("list")
 def list_data_objects(
+    config_path: Annotated[Optional[str], typer.Option("--config", help="Workspace configuration")] = None,
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
 ) -> None:
     """List business data objects with privacy and compliance classifications."""
     target_path = _resolve_source(source)
-    service = LineageService(target_path)
+    service = LineageService(target_path, config=TectonConfig.load(config_path, workspace_dir=target_path if target_path.is_dir() else target_path.parent))
     data_objects = service.list_data_objects()
 
     if not data_objects:
@@ -66,11 +70,12 @@ def list_data_objects(
 
 @app.command("interfaces")
 def list_interfaces(
+    config_path: Annotated[Optional[str], typer.Option("--config", help="Workspace configuration")] = None,
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
 ) -> None:
     """List communication interfaces, protocols, and carried data contracts."""
     target_path = _resolve_source(source)
-    service = LineageService(target_path)
+    service = LineageService(target_path, config=TectonConfig.load(config_path, workspace_dir=target_path if target_path.is_dir() else target_path.parent))
     interfaces = service.list_interfaces()
 
     if not interfaces:
@@ -105,20 +110,22 @@ def list_interfaces(
 @app.command("lineage")
 def trace_lineage(
     data_object_id: Annotated[str, typer.Argument(help="ID of data object to trace flow trajectory")],
+    as_of_date: Annotated[Optional[str], typer.Option("--as-of-date", help="Evaluation date YYYY-MM-DD")] = None,
+    config_path: Annotated[Optional[str], typer.Option("--config", help="Workspace configuration")] = None,
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
 ) -> None:
     """Trace end-to-end data lineage trajectory and compliance risks across systems."""
     target_path = _resolve_source(source)
-    service = LineageService(target_path)
+    service = LineageService(target_path, config=TectonConfig.load(config_path, workspace_dir=target_path if target_path.is_dir() else target_path.parent))
 
     try:
-        report = service.trace_lineage(data_object_id)
+        report = service.trace_lineage(data_object_id, as_of_date=resolve_date(as_of_date))
     except KeyError as e:
         console.print(f"[bold red]Error: {e}[/bold red]")
         raise typer.Exit(code=1)
 
-    status_color = "bold green" if report.is_compliant else "bold red"
-    status_label = "✅ COMPLIANT (No Compliance Risks Detected)" if report.is_compliant else f"🚨 DETECTED {report.risk_count} COMPLIANCE RISKS"
+    status_color = "bold red" if report.compliance_risks else "yellow"
+    status_label = (f"DETECTED {report.risk_count} modeled risks" if report.compliance_risks else report.assessment_status.replace("_", " ")) + " (declared flows only)"
 
     console.print(f"\n[bold]Data Lineage Trajectory:[/bold] [cyan]{report.data_object_name}[/cyan] ({report.data_object_id})")
     console.print(Panel(
@@ -166,15 +173,17 @@ def trace_lineage(
 @app.command("export-lineage")
 def export_lineage(
     data_object_id: Annotated[str, typer.Argument(help="ID of data object to generate diagram for")],
+    as_of_date: Annotated[Optional[str], typer.Option("--as-of-date", help="Evaluation date YYYY-MM-DD")] = None,
+    config_path: Annotated[Optional[str], typer.Option("--config", help="Workspace configuration")] = None,
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
     output: Annotated[Optional[str], typer.Option("--output", "-o", help="Output file path")] = None,
 ) -> None:
     """Export Mermaid flowchart diagram of the end-to-end data lineage trajectory."""
     target_path = _resolve_source(source)
-    service = LineageService(target_path)
+    service = LineageService(target_path, config=TectonConfig.load(config_path, workspace_dir=target_path if target_path.is_dir() else target_path.parent))
 
     try:
-        chart = service.export_lineage_flowchart(data_object_id)
+        chart = service.export_lineage_flowchart(data_object_id, as_of_date=resolve_date(as_of_date))
     except KeyError as e:
         console.print(f"[bold red]Error: {e}[/bold red]")
         raise typer.Exit(code=1)

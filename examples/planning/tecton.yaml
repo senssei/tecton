@@ -1,0 +1,14 @@
+owners:
+  team:
+    name: Migration team
+    active: true
+quality:
+  rules:
+    REVIEW_MISSING: warning
+    REVIEW_OVERDUE: warning
+teams:
+  team:
+    capacity_person_days: '20'
+budgets:
+  2026-06:
+    PLN: '900'

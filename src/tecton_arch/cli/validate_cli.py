@@ -41,7 +41,7 @@ def run_validation(
     if output_format.lower() == "json":
         data = {
             "valid": report.valid and (report.warning_count == 0 if eff_strict else True),
-            "as_of_date": str(as_of_date) if as_of_date else None,
+            "as_of_date": report.as_of_date,
             "files_scanned": len(graph.files_parsed),
             "error_count": report.error_count,
             "warning_count": report.warning_count,

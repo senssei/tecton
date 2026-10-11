@@ -112,3 +112,11 @@ owners. It does not require system descriptions or lifecycle phases globally.
 
 The optional `data_flow_diagrams` collection defines explicit processes, stores,
 external entities and named flows. See the [DFD schema and example](portal_visualizations.md#explicit-data-flow-diagrams).
+
+## Review and planning extensions
+
+All global entities and relationships support optional review metadata. Systems
+support annual costs and suitability rationale; capabilities support importance;
+work packages support costs, business cases, explicit introduction/retirement
+roles, resource allocations and monthly spend plans. See the
+[catalog and planning guide](catalog_planning.md) for fields, defaults and formulas.

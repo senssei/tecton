@@ -1,6 +1,8 @@
 """CLI command for semantic architectural diffing between Git revisions or directories."""
 
 import json
+from datetime import date
+from tecton_arch.core.config import TectonConfig
 from pathlib import Path
 from typing import Annotated, Optional
 import typer
@@ -19,10 +21,18 @@ def diff_command(
     head: Annotated[Optional[str], typer.Argument(help="Target Git revision or path (default HEAD or current directory)")] = None,
     output_format: Annotated[str, typer.Option("--format", "-f", help="Output format: table, markdown, pr-comment, json")] = "table",
     output: Annotated[Optional[str], typer.Option("--output", "-o", help="Output file path")] = None,
+    as_of_date: Annotated[Optional[str], typer.Option("--as-of-date", help="Evaluation date YYYY-MM-DD")] = None,
+    workspace_path: Annotated[str, typer.Option("--workspace-path", help="Catalog path relative to Git root")] = ".",
+    config_path: Annotated[Optional[str], typer.Option("--config", help="Analysis configuration for both sides")] = None,
     fail_on_risk: Annotated[bool, typer.Option("--fail-on-risk", help="Exit with code 1 if architectural regressions or capability gaps are detected")] = False,
 ) -> None:
     """Compute semantic architectural diff between two Git revisions or architecture directories."""
     service = DiffService()
+    try:
+        evaluation_date = date.fromisoformat(as_of_date) if as_of_date else date.today()
+        config = TectonConfig.load(config_path) if config_path else None
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
 
     # Determine whether we are comparing directories or Git revisions
     base_path = Path(base)
@@ -30,9 +40,9 @@ def diff_command(
 
     if base_path.exists():
         # Directory comparison mode
-        actual_head = head_path if head_path and head_path.exists() else Path(".")
+        actual_head = head_path if head_path is not None else Path(".")
         try:
-            report = service.compare_directories(base_path, actual_head, base_label=str(base_path), head_label=str(actual_head))
+            report = service.compare_directories(base_path, actual_head, base_label=str(base_path), head_label=str(actual_head), as_of_date=evaluation_date, config=config)
         except Exception as e:
             console.print(f"[bold red]Directory diff error: {e}[/bold red]")
             raise typer.Exit(code=1)
@@ -40,7 +50,7 @@ def diff_command(
         # Git revision comparison mode
         actual_head_ref = head if head else "HEAD"
         try:
-            report = service.compare_git_revisions(base_ref=base, head_ref=actual_head_ref)
+            report = service.compare_git_revisions(base_ref=base, head_ref=actual_head_ref, workspace_path=workspace_path, as_of_date=evaluation_date, config=config)
         except Exception as e:
             console.print(f"[bold red]Git revision diff error: {e}[/bold red]")
             raise typer.Exit(code=1)

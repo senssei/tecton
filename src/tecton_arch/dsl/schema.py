@@ -5,9 +5,10 @@ with Enterprise Architecture Portfolio Management (capabilities, TIME scores, li
 """
 
 from datetime import date
+from decimal import Decimal
 from enum import Enum
 from typing import Any
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from tecton_arch.core.models import (
     Application,
@@ -18,11 +19,53 @@ from tecton_arch.core.models import (
 )
 
 
+class ReviewDef(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reviewed_on: date | None = None
+    reviewed_by: str | None = None
+    next_review_on: date | None = None
+
+    @model_validator(mode="after")
+    def valid_review(self):
+        if bool(self.reviewed_on) != bool(self.reviewed_by and self.reviewed_by.strip()):
+            raise ValueError("reviewed_on and reviewed_by must be provided together")
+        if self.next_review_on and (not self.reviewed_on or self.next_review_on < self.reviewed_on):
+            raise ValueError("next_review_on requires and must not precede reviewed_on")
+        return self
+
+
+class MoneyDef(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    amount: Decimal = Field(ge=0, allow_inf_nan=False)
+    currency: str = Field(pattern=r"^[A-Z]{3}$")
+
+
+class BusinessCaseDef(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    annual_net_savings: Decimal = Field(allow_inf_nan=False)
+    horizon_years: int = Field(gt=0)
+    assumptions: list[str] = Field(min_length=1)
+
+
+class ResourceAllocationDef(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    team_id: str = Field(min_length=1)
+    month: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
+    person_days: Decimal = Field(ge=0, allow_inf_nan=False)
+
+
+class SpendDef(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    month: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
+    amount: Decimal = Field(ge=0, allow_inf_nan=False)
+
+
 class BaseEntityDef(BaseModel):
     """Base schema for all architectural entities with strict validation against unknown fields."""
 
     model_config = ConfigDict(extra="forbid")
 
+    review: ReviewDef | None = None
     kind: str | None = None
     tags: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -38,6 +81,8 @@ class TechnologyStatus(str, Enum):
 
 
 class BusinessCapabilityDef(BaseEntityDef):
+    """Business capability with direct realization and weighted leaf coverage."""
+    importance: int = Field(default=1, ge=1, le=5)
     """Business Capability representing what an organization does."""
 
     id: str
@@ -161,6 +206,9 @@ class InterfaceDef(BaseEntityDef):
 
 
 class SoftwareSystemDef(BaseEntityDef):
+    """C4 software system extended with portfolio costs and lifecycle."""
+    annual_cost: MoneyDef | None = None
+    suitability_rationale: str | None = None
     """C4 Software System extended with EAM portfolio properties."""
 
 
@@ -221,6 +269,8 @@ class SoftwareSystemDef(BaseEntityDef):
                 "technologies": self.technologies,
                 "description": self.description,
                 "owner": self.owner,
+                "annual_cost": self.annual_cost.model_dump(mode="json") if self.annual_cost else None,
+                "suitability_rationale": self.suitability_rationale,
             },
         )
 
@@ -265,6 +315,23 @@ class PlateauDef(BaseEntityDef):
 
 
 class WorkPackageDef(BaseEntityDef):
+    """Transformation initiative with explicit schedule, funding and resource plans."""
+    planned_cost: MoneyDef | None = None
+    business_case: BusinessCaseDef | None = None
+    resource_allocations: list[ResourceAllocationDef] = Field(default_factory=list)
+    spend_plan: list[SpendDef] = Field(default_factory=list)
+    introduced_system_ids: list[str] = Field(default_factory=list)
+    decommissioned_system_ids: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def valid_plan(self):
+        if self.business_case and not self.planned_cost:
+            raise ValueError("business_case requires planned_cost")
+        if self.spend_plan:
+            if not self.planned_cost or sum((v.amount for v in self.spend_plan), Decimal(0)) != self.planned_cost.amount:
+                raise ValueError("spend_plan must sum to planned_cost")
+        return self
+
     """Transformation initiative, migration project, or work package."""
 
     id: str

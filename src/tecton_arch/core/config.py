@@ -2,9 +2,10 @@
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
+from decimal import Decimal
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 from tecton_arch.core.models import RedundancyConfig, TimeConfig
 
@@ -34,8 +35,63 @@ class WorkspaceConfig(BaseModel):
     require_owner: bool = False
 
 
+class OwnerConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str
+    active: bool = True
+
+
+class TeamConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    capacity_person_days: Decimal = Field(default=0, ge=0, allow_inf_nan=False)
+    monthly_capacity: dict[str, Decimal] = Field(default_factory=dict)
+
+    @field_validator("monthly_capacity")
+    @classmethod
+    def validate_capacity(cls, values):
+        import re
+        for month, amount in values.items():
+            if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", month) or not amount.is_finite() or amount < 0:
+                raise ValueError("Invalid month or capacity")
+        return values
+
+
+class QualityConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    review_valid_days: int = Field(default=180, gt=0)
+    rules: dict[str, Literal["error", "warning", "off"]] = Field(default_factory=dict)
+
+    @field_validator("rules")
+    @classmethod
+    def valid_rules(cls, values):
+        from tecton_arch.core.quality import RULES, PROTECTED_PREFIXES, PROTECTED_RULES
+        for rule, level in values.items():
+            if rule not in RULES:
+                raise ValueError(f"Unknown quality rule: {rule}")
+            if (rule in PROTECTED_RULES or rule.startswith(PROTECTED_PREFIXES)) and level != "error":
+                raise ValueError(f"Structural rule {rule} must remain error")
+        return values
+
+
 class TectonConfig(BaseModel):
     """Global configuration for Tecton."""
+
+    quality: QualityConfig = Field(default_factory=QualityConfig)
+    owners: dict[str, OwnerConfig] = Field(default_factory=dict)
+    teams: dict[str, TeamConfig] = Field(default_factory=dict)
+    budgets: dict[str, dict[str, Decimal]] = Field(default_factory=dict)
+
+    @field_validator("budgets")
+    @classmethod
+    def valid_budgets(cls, values):
+        import re
+        for month, currencies in values.items():
+            if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", month):
+                raise ValueError("Invalid budget month")
+            for currency, amount in currencies.items():
+                if not re.fullmatch(r"[A-Z]{3}", currency) or not amount.is_finite() or amount < 0:
+                    raise ValueError("Invalid currency or budget amount")
+        return values
 
     dry_run: bool = True
     strict: bool = False
@@ -52,6 +108,8 @@ class TectonConfig(BaseModel):
         workspace_dir: str | Path | None = None,
     ) -> "TectonConfig":
         """Load configuration from YAML file and environment variables."""
+        if config_path and not Path(config_path).is_file():
+            raise FileNotFoundError(f"Configuration does not exist: {config_path}")
         data: dict[str, Any] = {}
 
         ws_path = Path(workspace_dir).resolve() if workspace_dir else None
@@ -74,8 +132,9 @@ class TectonConfig(BaseModel):
                         if isinstance(loaded, dict):
                             data = loaded
                             break
-                except Exception:
-                    pass
+                        raise ValueError(f"Configuration {p} must be a mapping")
+                except (OSError, yaml.YAMLError) as exc:
+                    raise ValueError(f"Cannot load configuration {p}: {exc}") from exc
 
         # Environment variable overrides
         repo_data = data.setdefault("repository", {})

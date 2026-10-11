@@ -38,9 +38,8 @@ in practice; a real business domain must then test organizational adoption.
 
 ## Future directions
 
-Automatic discovery from code, OpenAPI/AsyncAPI ingestion, editing forms,
-entity-refactoring commands, broader remote integrations and fully bundled
-offline portal assets are future work. They are not shipped features.
+Automatic discovery from code, OpenAPI/AsyncAPI ingestion, editing forms and broader remote integrations are future work.
+ID refactoring to isolated catalogs and bundled offline portals are implemented. They are not shipped features.
 
 Tecton currently uses deterministic heuristics rather than an LLM. Suitability
 scores and risk labels are decision inputs, not objective measurements of all

@@ -42,6 +42,7 @@ class APMService:
 
     def analyze(self, as_of_date: date | None = None) -> APMAnalysisResult:
         """Execute full portfolio analysis (TIME, Redundancy, Lifecycle)."""
+        as_of_date = as_of_date or date.today()
         apps = self.repository.fetch_applications(as_of_date=as_of_date)
         time_map = self.time_engine.evaluate_all(apps)
         redundancies = self.redundancy_engine.find_redundancies(apps)
@@ -58,6 +59,9 @@ class APMService:
                 proposed_patches[app.id] = [patch]
                 total_patch_count += 1
 
+        from tecton_arch.core.config import TectonConfig
+        from tecton_arch.services.assessment import evaluate_applications
+        apps = evaluate_applications(apps, TectonConfig(time=self.time_engine.config), as_of_date)
         return APMAnalysisResult(
             as_of_date=as_of_date,
             applications=apps,

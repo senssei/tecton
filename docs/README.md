@@ -13,6 +13,8 @@ Start with the [project README](../README.md), then choose a guide below.
 | [GitHub setup](github_publication.md) | Repository configuration and CI |
 | [PyPI releases](pypi_release.md) | Packaging, TestPyPI and Trusted Publishing |
 
+- [Catalog review and planning](catalog_planning.md): freshness, policies, ID refactoring, costs and feasibility.
+
 ## 🏛️ Architecture and design
 
 | Document | Purpose |

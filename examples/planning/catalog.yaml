@@ -1,0 +1,126 @@
+capabilities:
+- id: root
+  name: Root
+- id: cap
+  name: Capability
+  parent_id: root
+  importance: 5
+- id: gap
+  name: Gap
+  parent_id: root
+  importance: 1
+systems:
+- id: old
+  name: Old
+  owner: team
+  functional_suitability: 1
+  technical_suitability: 1
+  time_classification: INVEST
+  capabilities:
+  - cap
+  technologies:
+  - tech
+  annual_cost:
+    amount: '100.10'
+    currency: PLN
+  review:
+    reviewed_on: '2026-01-01'
+    reviewed_by: team
+- id: new
+  name: New
+  functional_suitability: 5
+  technical_suitability: 5
+  capabilities:
+  - cap
+  annual_cost:
+    amount: '200.20'
+    currency: PLN
+containers:
+- id: component
+  name: Component
+  system_id: old
+  technology: tech
+technologies:
+- id: tech
+  name: Runtime
+  eol_date: '2030-01-01'
+data_objects:
+- id: data
+  name: Data
+  classification: RESTRICTED_PII
+interfaces:
+- id: api
+  name: API
+  provider_system_id: old
+  consumer_system_ids:
+  - new
+  data_objects:
+  - data
+relationships:
+- source_id: old
+  target_id: new
+  data_objects:
+  - data
+plateaus:
+- id: baseline
+  name: Baseline
+  target_date: '2026-01-01'
+  active_system_ids:
+  - old
+- id: target
+  name: Target
+  previous_plateau_id: baseline
+  target_date: '2026-12-31'
+  active_system_ids:
+  - new
+  decommissioned_system_ids:
+  - old
+work_packages:
+- id: migration
+  name: Migration
+  start_date: '2026-01-01'
+  target_date: '2026-10-01'
+  from_plateau_id: baseline
+  to_plateau_id: target
+  introduced_system_ids:
+  - new
+  decommissioned_system_ids:
+  - old
+  involved_system_ids:
+  - old
+  - new
+  realized_capability_ids:
+  - cap
+  planned_cost:
+    amount: '1000'
+    currency: PLN
+  business_case:
+    annual_net_savings: '500'
+    horizon_years: 3
+    assumptions:
+    - Annual savings after migration
+  resource_allocations:
+  - team_id: team
+    month: 2026-06
+    person_days: '30'
+  spend_plan:
+  - month: 2026-06
+    amount: '1000'
+data_flow_diagrams:
+- id: dfd
+  name: DFD
+  nodes:
+  - id: old
+    name: Process
+    kind: process
+    system_id: old
+  - id: store
+    name: Store
+    kind: data_store
+  flows:
+  - id: flow
+    name: Flow
+    source_id: old
+    target_id: store
+    data_objects:
+    - data

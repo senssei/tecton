@@ -53,7 +53,7 @@ class OverviewResponse(BaseModel):
     as_of_date: Optional[str] = None
 
 
-def create_app(workspace_path: Path | str = ".") -> FastAPI:
+def create_app(workspace_path: Path | str = ".", config=None) -> FastAPI:
     """Create and configure a FastAPI application serving architecture intelligence."""
     resolved_path = Path(workspace_path).resolve()
 
@@ -75,7 +75,7 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
         allow_headers=["*"],
     )
 
-    tecton_app = TectonApp(resolved_path)
+    tecton_app = TectonApp(resolved_path, config=config)
 
     # --- Architecture Intelligence Web Portal & Dashboard ---
     @app.get("/", response_class=HTMLResponse, tags=["Portal"], include_in_schema=False)
@@ -117,7 +117,7 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
         report = tecton_app.validate(strict=False, as_of_date=as_of_date)
         return {
             "valid": report.valid,
-            "as_of_date": str(as_of_date) if as_of_date else None,
+            "as_of_date": report.as_of_date,
             "error_count": report.error_count,
             "warning_count": report.warning_count,
             "issues": [
@@ -154,9 +154,9 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
         return tecton_app.bcm_capabilities()
 
     @app.get("/api/v1/bcm/coverage", tags=["BCM"])
-    def analyze_bcm_coverage() -> dict[str, Any]:
+    def analyze_bcm_coverage(as_of_date: Optional[date] = Query(None)) -> dict[str, Any]:
         """Analyze capability coverage, detect unmapped blind spots, and assess health."""
-        return tecton_app.bcm_analysis()
+        return tecton_app.bcm_analysis(as_of_date=as_of_date)
 
     # --- TRM Endpoints ---
     @app.get("/api/v1/trm/technologies", tags=["TRM"])
@@ -193,10 +193,10 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
         return tecton_app.data_flow_diagrams()
 
     @app.get("/api/v1/data/lineage/{data_object_id}", tags=["Data Architecture"])
-    def trace_data_lineage(data_object_id: str) -> dict[str, Any]:
+    def trace_data_lineage(data_object_id: str, as_of_date: Optional[date] = Query(None)) -> dict[str, Any]:
         """Trace end-to-end data lineage trajectory and compliance audit report."""
         try:
-            return tecton_app.data_lineage(data_object_id)
+            return tecton_app.data_lineage(data_object_id, as_of_date=as_of_date)
         except EntityNotFoundError as e:
             raise HTTPException(status_code=404, detail=str(e))
 
@@ -229,18 +229,36 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
             return tecton_app.roadmap_compare(from_plateau, to_plateau, as_of_date=as_of_date)
         except KeyError as e:
             raise HTTPException(status_code=404, detail=str(e))
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+
+    @app.get("/api/v1/catalog/freshness", tags=["Catalog"])
+    def catalog_freshness(as_of_date: Optional[date] = Query(None)):
+        return tecton_app.catalog_freshness(as_of_date)
+
+    @app.get("/api/v1/apm/costs", tags=["APM"])
+    def portfolio_costs():
+        return tecton_app.apm_costs()
+
+    @app.get("/api/v1/roadmap/business-case", tags=["Roadmap"])
+    def roadmap_business_case():
+        return tecton_app.roadmap_business_cases()
+
+    @app.get("/api/v1/roadmap/feasibility", tags=["Roadmap"])
+    def roadmap_feasibility(as_of_date: Optional[date] = Query(None)):
+        return tecton_app.roadmap_feasibility(as_of_date)
 
     # --- Living Visualizations Endpoints ---
     @app.get("/api/v1/diagrams/{chart_type}", tags=["Visualizations"])
     def get_diagram(
         chart_type: str,
         data_id: Optional[str] = Query(None, description="Data Object ID for data-lineage chart"),
-        as_of: Optional[str] = Query(None, description="Target evaluation date (YYYY-MM-DD)"),
+        as_of_date: Optional[date] = Query(None),
+        as_of: Optional[date] = Query(None, description="Legacy alias for as_of_date"),
     ) -> dict[str, Any]:
         """Generate living Mermaid diagram content for external dashboards."""
-        export_opts: dict[str, Any] = {}
-        if as_of:
-            export_opts["as_of_date"] = as_of
+        evaluation_date = as_of_date or as_of or date.today()
+        export_opts: dict[str, Any] = {"as_of_date": evaluation_date}
 
         if chart_type in ("time-matrix", "time"):
             res = tecton_app.export("mermaid", options={"diagram_type": "time-matrix", **export_opts})
@@ -252,7 +270,7 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
             if not data_id:
                 raise HTTPException(status_code=400, detail="Query parameter 'data_id' is required for chart_type 'data-lineage'")
             try:
-                content = tecton_app.data_lineage_flowchart(data_id)
+                content = tecton_app.data_lineage_flowchart(data_id, as_of_date=evaluation_date)
                 return {"chart_type": chart_type, "format": "mermaid", "content": content}
             except EntityNotFoundError as e:
                 raise HTTPException(status_code=404, detail=str(e))
@@ -268,6 +286,7 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
             "chart_type": chart_type,
             "format": "mermaid",
             "content": res.content,
+            "warnings": res.warnings,
         }
 
     # --- Open EA Ecosystem Connectors Endpoints ---
@@ -280,6 +299,7 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
             "format": "yaml",
             "entities_count": len(entities),
             "content": res.content,
+            "warnings": res.warnings,
         }
 
     @app.get("/api/v1/export/archimate", tags=["Connectors"])

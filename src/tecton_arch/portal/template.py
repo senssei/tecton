@@ -173,6 +173,7 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
         <span id="header-gate-badge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Quality Gate: PASS</span>
       </div>
       <div class="flex items-center space-x-3">
+        <label class="text-xs">Evaluation date <input id="evaluation-date" type="date" onchange="changeEvaluationDate(this.value)" class="bg-slate-800 rounded p-1"></label>
         <span id="mode-badge" class="text-xs px-2.5 py-1 rounded bg-slate-800 text-slate-400 font-mono">Mode: Loading...</span>
         <button id="btn-reload" onclick="reloadData()" class="text-xs px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition flex items-center space-x-1">
           <span>🔄 Reload Graph</span>
@@ -188,6 +189,7 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
       <button onclick="switchTab('trm')" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200" data-tab="trm">🛡️ Tech Radar & Risks</button>
       <button onclick="switchTab('data')" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200" data-tab="data">🔀 Data & Lineage</button>
       <button onclick="switchTab('roadmap')" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200" data-tab="roadmap">🗺️ Transformation Roadmap</button>
+      <button onclick="switchTab('planning')" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-slate-400" data-tab="planning">Catalog &amp; Planning</button>
       <button onclick="switchTab('connectors')" class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200" data-tab="connectors">🔌 Ecosystem Export</button>
     </div>
   </header>
@@ -453,6 +455,11 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
       </div>
     </div>
 
+    <div id="tab-planning" class="tab-content space-y-6">
+      <h2 class="text-xl font-semibold">Catalog reviews and transformation planning</h2>
+      <p>These reports evaluate declared data. Missing information is shown separately from detected problems.</p>
+      <div id="catalog-reviews"></div><div id="portfolio-costs"></div><div id="business-cases"></div><div id="plan-feasibility"></div>
+    </div>
   </main>
 
   <!-- Static Pre-Baked Data Injection Slot -->
@@ -488,7 +495,56 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
         .replace(/'/g, '&#039;');
     }
 
+    function apiFetch(path, options) {
+      const url = new URL(path, location.href);
+      if (state.asOfDate) url.searchParams.set('as_of_date', state.asOfDate);
+      return fetch(url, options).then(response => {
+        if (!response.ok) throw new Error('Report unavailable');
+        return response;
+      });
+    }
+
+    window.tectonApiFetch = apiFetch;
+
+    async function changeEvaluationDate(value) {
+      if (!value || state.isStatic) return;
+      const input = document.getElementById('evaluation-date');
+      input.disabled = true;
+      const previousDate = state.asOfDate;
+      state.asOfDate = value;
+      try {
+        await loadFromApi();
+        renderAll();
+      } catch (error) {
+        state.asOfDate = previousDate;
+        input.value = previousDate;
+        document.getElementById('mode-badge').textContent = 'Reports unavailable. Previous evaluation retained.';
+      } finally { input.disabled = false; }
+    }
+
+    function reportTable(title, rows) {
+      if (!rows.length) return `<h3>${escapeHtml(title)}</h3><p>No entries.</p>`;
+      const columns = [...new Set(rows.flatMap(row => Object.keys(row)))];
+      const display = value => value == null ? 'Not supplied' : Array.isArray(value) ? value.map(display).join(', ') : typeof value === 'object' ? Object.entries(value).map(([k,v]) => `${k}: ${display(v)}`).join('; ') : String(value);
+      return `<h3 class="text-lg font-semibold">${escapeHtml(title)}</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr>${columns.map(k => `<th class="p-2 text-left">${escapeHtml(k.replaceAll('_',' '))}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${columns.map(k => `<td class="p-2">${escapeHtml(display(row[k]))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+    }
+
+    function renderPlanning() {
+      const freshness = state.catalogFreshness || {};
+      document.getElementById('catalog-reviews').innerHTML = reportTable('Catalog reviews', freshness.items || []);
+      const costs = state.portfolioCosts || {};
+      document.getElementById('portfolio-costs').innerHTML = reportTable('Annual portfolio costs', Object.entries(costs.totals_by_currency || {}).map(([currency, amount]) => ({currency, amount}))) + `<p>Missing cost data: ${escapeHtml((costs.missing_system_ids || []).join(', ') || 'None')}</p>`;
+      document.getElementById('business-cases').innerHTML = reportTable('Business cases', state.businessCases?.items || []);
+      const feasibility = state.feasibility || {};
+      document.getElementById('plan-feasibility').innerHTML = `<h3>Plan assessment: ${escapeHtml((feasibility.assessment_status || 'insufficient_data').replaceAll('_',' '))}</h3>` + reportTable('Detected conflicts', feasibility.issues || []) + reportTable('Missing information', feasibility.missing_data || []) + reportTable('Team capacity', feasibility.resource_usage || []) + reportTable('Monthly budgets', feasibility.budget_usage || []);
+    }
+
     async function init() {
+      const input = document.getElementById('evaluation-date');
+      const today = new Date();
+      state.asOfDate = window.__TECTON_DATA__?.as_of_date || `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+      input.value = state.asOfDate;
+      input.disabled = state.isStatic;
       if (state.isStatic) {
         document.getElementById('mode-badge').innerText = 'Mode: Offline Static';
         document.getElementById('btn-reload').style.display = 'none';
@@ -525,16 +581,32 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
     async function loadFromApi() {
       try {
         const [ovRes, valRes, appRes, capRes, covRes, techRes, doRes, ifRes, platRes, wpRes] = await Promise.all([
-          fetch('/api/v1/overview').then(r => r.json()),
-          fetch('/api/v1/validate').then(r => r.json()),
-          fetch('/api/v1/apm/applications').then(r => r.json()),
-          fetch('/api/v1/bcm/capabilities').then(r => r.json()),
-          fetch('/api/v1/bcm/coverage').then(r => r.json()),
-          fetch('/api/v1/trm/technologies').then(r => r.json()),
-          fetch('/api/v1/data/objects').then(r => r.json()),
-          fetch('/api/v1/data/interfaces').then(r => r.json()),
-          fetch('/api/v1/roadmap/plateaus').then(r => r.json()),
-          fetch('/api/v1/roadmap/work-packages').then(r => r.json()),
+          apiFetch('/api/v1/overview').then(r => r.json()),
+          apiFetch('/api/v1/validate').then(r => r.json()),
+          apiFetch('/api/v1/apm/applications').then(r => r.json()),
+          apiFetch('/api/v1/bcm/capabilities').then(r => r.json()),
+          apiFetch('/api/v1/bcm/coverage').then(r => r.json()),
+          apiFetch('/api/v1/trm/technologies').then(r => r.json()),
+          apiFetch('/api/v1/data/objects').then(r => r.json()),
+          apiFetch('/api/v1/data/interfaces').then(r => r.json()),
+          apiFetch('/api/v1/roadmap/plateaus').then(r => r.json()),
+          apiFetch('/api/v1/roadmap/work-packages').then(r => r.json()),
+        ]);
+
+        const dataFlowDiagrams = await apiFetch('/api/v1/data/flow-diagrams').then(r => {if (!r.ok) throw Error('DFD unavailable'); return r.json();});
+
+        const [catalogFreshness, portfolioCosts, businessCases, feasibility] = await Promise.all([
+          apiFetch('/api/v1/catalog/freshness').then(r => r.json()),
+          apiFetch('/api/v1/apm/costs').then(r => r.json()),
+          apiFetch('/api/v1/roadmap/business-case').then(r => r.json()),
+          apiFetch('/api/v1/roadmap/feasibility').then(r => r.json())
+        ]);
+        // Fetch living diagrams
+        const [dTime, dHeatmap, dRadar, dGantt] = await Promise.all([
+          apiFetch('/api/v1/diagrams/time-matrix').then(r => r.json()).catch(() => null),
+          apiFetch('/api/v1/diagrams/capability-heatmap').then(r => r.json()).catch(() => null),
+          apiFetch('/api/v1/diagrams/tech-radar').then(r => r.json()).catch(() => null),
+          apiFetch('/api/v1/diagrams/roadmap-gantt').then(r => r.json()).catch(() => null),
         ]);
 
         state.overview = ovRes;
@@ -543,30 +615,29 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
         state.capabilities = capRes;
         state.coverage = covRes;
         state.technologies = techRes.technologies || [];
-        state.dataFlowDiagrams = await fetch('/api/v1/data/flow-diagrams').then(r => {if (!r.ok) throw Error('DFD unavailable'); return r.json();});
         state.dataObjects = doRes;
         state.interfaces = ifRes;
         state.plateaus = platRes;
         state.workPackages = wpRes;
-
-        // Fetch living diagrams
-        const [dTime, dHeatmap, dRadar, dGantt] = await Promise.all([
-          fetch('/api/v1/diagrams/time-matrix').then(r => r.json()).catch(() => null),
-          fetch('/api/v1/diagrams/capability-heatmap').then(r => r.json()).catch(() => null),
-          fetch('/api/v1/diagrams/tech-radar').then(r => r.json()).catch(() => null),
-          fetch('/api/v1/diagrams/roadmap-gantt').then(r => r.json()).catch(() => null),
-        ]);
-
+        state.dataFlowDiagrams = dataFlowDiagrams;
+        Object.assign(state, {catalogFreshness, portfolioCosts, businessCases, feasibility});
+        state.diagrams = {};
         if (dTime) state.diagrams['time-matrix'] = dTime.content;
         if (dHeatmap) state.diagrams['bcm-heatmap'] = dHeatmap.content;
         if (dRadar) state.diagrams['tech-radar'] = dRadar.content;
         if (dGantt) state.diagrams['roadmap-gantt'] = dGantt.content;
       } catch (err) {
         console.error('Failed to fetch from API:', err);
+        throw err;
       }
     }
 
     function loadFromStaticData(data) {
+      state.interchangeWarnings = data.interchangeWarnings || [];
+      state.catalogFreshness = data.catalogFreshness;
+      state.portfolioCosts = data.portfolioCosts;
+      state.businessCases = data.businessCases;
+      state.feasibility = data.feasibility;
       state.overview = data.overview;
       state.validation = data.validation;
       state.applications = data.applications || [];
@@ -610,12 +681,13 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
 
     async function reloadData() {
       if (state.isStatic) return;
-      await fetch('/api/v1/reload', { method: 'POST' });
+      await apiFetch('/api/v1/reload', { method: 'POST' });
       await loadFromApi();
       renderAll();
     }
 
     function renderAll() {
+      renderPlanning();
       // 1. KPIs
       if (state.overview) {
         document.getElementById('kpi-apps').innerText = state.overview.total_applications;
@@ -743,7 +815,7 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
           <td class="p-3 text-slate-200"><div class="inventory-name">${escapeHtml(app.name)}</div><span class="inventory-id">${escapeHtml(app.id)}</span><p class="inventory-description">${escapeHtml(app.description || "")}</p>${(app.components || []).length ? `<button type="button" class="text-indigo-300" data-components="${escapeHtml(app.id)}">View ${app.components.length} components →</button>` : ''}</td>
           <td class="p-3">${escapeHtml(app.owner || '-')}</td>
           <td class="p-3">${escapeHtml(app.current_phase || '-')}</td>
-          <td class="p-3 font-semibold ${qColor}">${escapeHtml(quadrant)}</td>
+          <td class="p-3 font-semibold ${qColor}">${escapeHtml(quadrant)}<details><summary>Evaluation basis</summary><p>Declared: ${escapeHtml(app.declared_time_classification || 'UNKNOWN')}. Business threshold: ${escapeHtml(app.business_threshold)}. Technical threshold: ${escapeHtml(app.technical_threshold)}.</p><p>Missing scores: ${escapeHtml((app.missing_data || []).join(', ') || 'None')}.</p>${app.classification_mismatch ? '<p>Declared and evaluated classifications differ.</p>' : ''}</details></td>
           <td class="p-3 text-slate-400">${escapeHtml(app.business_criticality || '-')}</td>
           <td class="p-3 text-slate-400">${escapeHtml(app.functional_suitability || '-')} / ${escapeHtml(app.technical_suitability || '-')}</td>
           <td class="p-3">${inventoryItems(app.capabilities, state.capabilities)}</td>
@@ -801,7 +873,7 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
         const count = cov ? (cov.realizing_systems_count ?? (cov.realizing_system_ids || []).length) : null;
         const systems = cov ? (cov.realizing_systems || cov.realizing_system_names || []) : [];
         const label = health === 'UNMAPPED' ? 'No direct systems' : health.replace(/_/g, ' ').toLowerCase();
-        return `<details class="capability-cell ${classes[health]}"><summary><span class="capability-cell-level">${escapeHtml(cap.level || '')}</span><strong>${escapeHtml(cap.name)}</strong><span class="capability-cell-footer"><span>${escapeHtml(label)}</span><span>${count === null ? '?' : count} systems</span></span></summary><div class="capability-cell-detail"><p>${escapeHtml(cap.description || 'No description provided.')}</p><p>${systems.length ? systems.map(escapeHtml).join('<br>') : 'No directly mapped systems.'}</p></div></details>`;
+        return `<details class="capability-cell ${classes[health]}"><summary><span class="capability-cell-level">${escapeHtml(cap.level || '')}</span><strong>${escapeHtml(cap.name)}</strong><span class="capability-cell-footer"><span>${escapeHtml(label)}</span><span>${count === null ? '?' : count} systems</span></span></summary><div class="capability-cell-detail"><p>${escapeHtml(cap.description || 'No description provided.')}</p><p>Leaf coverage: ${escapeHtml(cov?.leaf_coverage_percentage ?? 'Unknown')}%. Weighted: ${escapeHtml(cov?.weighted_leaf_coverage_percentage ?? 'Unknown')}%.</p><p>${systems.length ? systems.map(escapeHtml).join('<br>') : 'No directly mapped systems.'}</p></div></details>`;
       };
       const branch = cap => {
         if (seen.has(cap.id)) return '';
@@ -842,7 +914,7 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
           return;
         }
       } else {
-        report = await fetch(`/api/v1/trm/blast-radius/${techId}`).then(r => r.json());
+        report = await apiFetch(`/api/v1/trm/blast-radius/${techId}`).then(r => r.json());
       }
 
       resContainer.innerHTML = `
@@ -883,7 +955,7 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
       const host = document.getElementById('mermaid-data-lineage');
       host.textContent = 'Loading data transfers…';
       try {
-        const report = state.isStatic ? state.lineageReports?.[dataId] : await fetch(`/api/v1/data/lineage/${encodeURIComponent(dataId)}`).then(r => {if (!r.ok) throw new Error('Lineage unavailable'); return r.json();});
+        const report = state.isStatic ? state.lineageReports?.[dataId] : await apiFetch(`/api/v1/data/lineage/${encodeURIComponent(dataId)}`).then(r => {if (!r.ok) throw new Error('Lineage unavailable'); return r.json();});
         if (document.getElementById('lineage-data-select').value !== dataId) return;
         const groups = new Map();
         for (const edge of report?.flow_edges || []) {
@@ -894,6 +966,8 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
           const name = technical ? channel.split(' (')[0].replaceAll('_',' ') : channel;
           groups.get(key).channels.set(JSON.stringify([name,edge.protocol]),{name,protocol:edge.protocol});
         }
+        const assessment = report?.assessment_status || 'no_modeled_flows';
+        document.getElementById('lineage-summary').textContent += ` Assessment: ${assessment.replaceAll('_',' ')}. This evaluates declared flows only.`;
         window.TectonLineage.render(host, [...groups.values()]);
       } catch (error) { host.textContent = 'Data lineage unavailable. Reload to try again.'; }
 
@@ -946,7 +1020,7 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
       let comp;
       try {
         comp = state.isStatic ? state.scenarioComparisons?.[`${fromP}_${toP}`]
-          : await fetch(`/api/v1/roadmap/compare?from_plateau=${encodeURIComponent(fromP)}&to_plateau=${encodeURIComponent(toP)}`).then(r => {if (!r.ok) throw new Error('Comparison unavailable'); return r.json();});
+          : await apiFetch(`/api/v1/roadmap/compare?from_plateau=${encodeURIComponent(fromP)}&to_plateau=${encodeURIComponent(toP)}`).then(r => {if (!r.ok) throw new Error('Comparison unavailable'); return r.json();});
       } catch (error) { container.textContent = 'Comparison unavailable. Reload to try again.'; return; }
       if (document.getElementById('compare-from-select').value !== fromP || document.getElementById('compare-to-select').value !== toP) return;
       if (!comp) {container.textContent = 'No comparison available for these architecture stages.'; return;}
@@ -965,7 +1039,7 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
 
     }
 
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', () => init().catch(() => {document.getElementById('mode-badge').textContent = 'Reports unavailable. Reload to try again.';}));
   </script>
 </body>
 </html>

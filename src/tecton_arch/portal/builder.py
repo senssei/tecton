@@ -20,7 +20,7 @@ class PortalBuilder:
 
     @classmethod
     def build_static_portal_html(cls, app_or_graph: Any, as_of_date: Any = None) -> str:
-        """Generate HTML snapshot with embedded model data and CDN-hosted visual assets with pre-baked JSON graph payload."""
+        """Generate HTML snapshot with embedded model data and bundled offline visual assets with pre-baked JSON graph payload."""
         if isinstance(app_or_graph, TectonApp):
             app = app_or_graph
         else:

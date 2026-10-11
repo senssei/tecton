@@ -1,5 +1,7 @@
 from datetime import date
 from pathlib import Path
+from tecton_arch.cli.catalog_cli import resolve_date
+from tecton_arch.core.config import TectonConfig
 from typing import Annotated, Optional
 import typer
 from rich.console import Console
@@ -23,13 +25,14 @@ def _resolve_source(source: str | None) -> Path:
 
 @app.command("list")
 def list_technologies(
+    config_path: Annotated[Optional[str], typer.Option("--config", help="Workspace configuration")] = None,
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
     as_of_date: Annotated[Optional[str], typer.Option("--as-of-date", help="Target evaluation date (YYYY-MM-DD) for EOL obsolescence")] = None,
 ) -> None:
     """List technology standards, obsolescence milestones, and system adoption count."""
     target_path = _resolve_source(source)
-    service = TRMService(target_path)
-    eval_date = date.fromisoformat(as_of_date) if as_of_date else None
+    service = TRMService(target_path, config=TectonConfig.load(config_path, workspace_dir=target_path if target_path.is_dir() else target_path.parent))
+    eval_date = resolve_date(as_of_date)
     report = service.evaluate_technologies(as_of_date=eval_date)
 
     if not report.technologies:
@@ -88,13 +91,14 @@ def list_technologies(
 @app.command("blast-radius")
 def calculate_blast_radius(
     technology_id: Annotated[str, typer.Argument(help="Technology ID to evaluate blast radius")],
+    config_path: Annotated[Optional[str], typer.Option("--config", help="Workspace configuration")] = None,
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
     as_of_date: Annotated[Optional[str], typer.Option("--as-of-date", help="Target evaluation date (YYYY-MM-DD) for EOL obsolescence")] = None,
 ) -> None:
     """Calculate direct and cascading blast radius if a technology fails or reaches EOL."""
     target_path = _resolve_source(source)
-    service = TRMService(target_path)
-    eval_date = date.fromisoformat(as_of_date) if as_of_date else None
+    service = TRMService(target_path, config=TectonConfig.load(config_path, workspace_dir=target_path if target_path.is_dir() else target_path.parent))
+    eval_date = resolve_date(as_of_date)
 
     try:
         report = service.calculate_blast_radius(technology_id, as_of_date=eval_date)
@@ -134,14 +138,15 @@ def calculate_blast_radius(
 
 @app.command("export-radar")
 def export_radar(
+    config_path: Annotated[Optional[str], typer.Option("--config", help="Workspace configuration")] = None,
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
     output: Annotated[Optional[str], typer.Option("--output", "-o", help="Output file path (default stdout)")] = None,
     as_of_date: Annotated[Optional[str], typer.Option("--as-of-date", help="Target evaluation date (YYYY-MM-DD) for EOL obsolescence")] = None,
 ) -> None:
     """Export Mermaid diagram of the Technology Radar."""
     target_path = _resolve_source(source)
-    service = TRMService(target_path)
-    eval_date = date.fromisoformat(as_of_date) if as_of_date else None
+    service = TRMService(target_path, config=TectonConfig.load(config_path, workspace_dir=target_path if target_path.is_dir() else target_path.parent))
+    eval_date = resolve_date(as_of_date)
     chart = service.export_radar(as_of_date=eval_date)
 
     if output:

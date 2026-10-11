@@ -17,6 +17,7 @@ def serve_command(
         Optional[str],
         typer.Option("--source", "-s", help="Path to architecture directory or manifest (default '.')"),
     ] = None,
+    config_path: Annotated[Optional[str], typer.Option("--config", help="Workspace configuration")] = None,
     host: Annotated[
         str,
         typer.Option("--host", "-h", help="Bind host address"),
@@ -37,7 +38,8 @@ def serve_command(
         raise typer.Exit(code=1)
 
     resolved_path = target_path.resolve()
-    app = create_app(resolved_path)
+    from tecton_arch.core.config import TectonConfig
+    app = create_app(resolved_path, config=TectonConfig.load(config_path, workspace_dir=resolved_path))
 
     console.print(Panel(
         f"[bold cyan]Tecton Architecture Intelligence Server & Web Portal[/bold cyan]\n\n"

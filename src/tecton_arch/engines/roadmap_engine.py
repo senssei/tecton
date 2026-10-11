@@ -95,33 +95,31 @@ class RoadmapEngine:
                 successors[pred_id].append(p_id)
                 in_degree[p_id] += 1
 
-        queue = deque([p_id for p_id, deg in in_degree.items() if deg == 0])
+        ordering = lambda pid: (self.graph.plateaus[pid].target_date or date.max, pid)
+        queue = deque(sorted((p_id for p_id, deg in in_degree.items() if deg == 0), key=ordering))
         ordered: list[str] = []
 
         while queue:
             curr = queue.popleft()
             ordered.append(curr)
-            for succ in successors.get(curr, []):
+            for succ in sorted(successors.get(curr, []), key=ordering):
                 in_degree[succ] -= 1
                 if in_degree[succ] == 0:
                     queue.append(succ)
+                    queue = deque(sorted(queue, key=ordering))
 
         # Fallback if any unvisited nodes remain (e.g. cycle or unconnected)
         for p in plateaus:
             if p.id not in ordered:
                 ordered.append(p.id)
 
-        # Sort stable by target_date when available
-        def sort_key(pid: str) -> tuple[int, str]:
-            plat = self.graph.plateaus.get(pid)
-            d = str(plat.target_date) if plat and plat.target_date else "9999-99-99"
-            return (0 if plat and plat.target_date else 1, d)
-
-        # If date-ordered is feasible without breaking predecessor order, plateaus follow sequence
         return [self.graph.plateaus[pid] for pid in ordered]
 
-    def evaluate_plateau_state(self, plateau_id: str, as_of_date: date | None = None) -> PlateauState:
+    def evaluate_plateau_state(self, plateau_id: str, as_of_date: date | None = None, _visited: frozenset[str] = frozenset()) -> PlateauState:
         """Evaluate active systems, realized capabilities, and technology footprint for a plateau."""
+        if plateau_id in _visited:
+            raise ValueError("Plateau predecessor cycle")
+        _visited = _visited | {plateau_id}
         plateau = self.graph.plateaus.get(plateau_id)
         if not plateau:
             raise KeyError(f"Plateau '{plateau_id}' does not exist in graph")
@@ -130,7 +128,7 @@ class RoadmapEngine:
         if plateau.active_system_ids:
             active_systems = [s for s in plateau.active_system_ids if s in self.graph.systems]
         elif plateau.previous_plateau_id and plateau.previous_plateau_id in self.graph.plateaus:
-            prev_state = self.evaluate_plateau_state(plateau.previous_plateau_id, as_of_date=as_of_date)
+            prev_state = self.evaluate_plateau_state(plateau.previous_plateau_id, as_of_date=as_of_date, _visited=_visited)
             decom_set = set(plateau.decommissioned_system_ids)
             active_systems = [s for s in prev_state.active_system_ids if s not in decom_set]
         else:
@@ -225,9 +223,26 @@ class RoadmapEngine:
             net_capability_gain=len(gained_caps) - len(lost_caps),
         )
 
-    def analyze_roadmap(self, as_of_date: Optional[date] = None) -> RoadmapAnalysisReport:
+    def analyze_roadmap(self, as_of_date: date | None = None) -> RoadmapAnalysisReport:
         """Perform comprehensive roadmap validation, gap analysis, and progress audit."""
         ordered_plateaus = self.get_ordered_plateaus()
+        def has_cycle(mapping):
+            visiting, done = set(), set()
+            def visit(node):
+                if node in visiting:
+                    return True
+                if node in done:
+                    return False
+                visiting.add(node)
+                if any(visit(parent) for parent in mapping.get(node, []) if parent in mapping):
+                    return True
+                visiting.remove(node)
+                done.add(node)
+                return False
+            return any(visit(node) for node in mapping)
+        cycle = has_cycle({p.id: [p.previous_plateau_id] if p.previous_plateau_id else [] for p in ordered_plateaus}) or has_cycle({w.id: w.depends_on for w in self.graph.work_packages.values()})
+        if cycle:
+            return RoadmapAnalysisReport(total_plateaus=len(ordered_plateaus), total_work_packages=len(self.graph.work_packages), is_valid_dag=False, issues=["Roadmap contains a cycle"])
         plateau_states = [self.evaluate_plateau_state(p.id, as_of_date=as_of_date) for p in ordered_plateaus]
 
         status_counts: dict[str, int] = {
@@ -243,9 +258,11 @@ class RoadmapEngine:
         issues: list[str] = []
 
         # Audit transitions between consecutive plateaus
-        for i in range(len(plateau_states) - 1):
-            curr = plateau_states[i]
-            nxt = plateau_states[i + 1]
+        state_map = {state.plateau_id: state for state in plateau_states}
+        for nxt in plateau_states:
+            curr = state_map.get(nxt.previous_plateau_id)
+            if curr is None:
+                continue
 
             lost_in_transition = set(curr.covered_capability_ids) - set(nxt.covered_capability_ids)
             for cap_id in lost_in_transition:

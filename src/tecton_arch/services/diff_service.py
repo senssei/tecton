@@ -1,11 +1,14 @@
 """Architecture Diff Service orchestrating semantic graph comparisons across Git & folders."""
 
 import io
+import json
 import subprocess
 import tarfile
 import tempfile
 from pathlib import Path
 from typing import Any
+from tecton_arch.core.config import TectonConfig
+from tecton_arch.engines.diff_engine import changed_fields
 
 from tecton_arch.dsl.parser import C4EAMParser, CompiledGraph
 from tecton_arch.engines.diff_engine import ArchitectureDiffReport, ChangeType, DiffEngine
@@ -24,6 +27,8 @@ class DiffService:
         head_path: Path | str,
         base_label: str | None = None,
         head_label: str | None = None,
+        as_of_date=None,
+        config=None,
     ) -> ArchitectureDiffReport:
         """Compare two filesystem directories or manifest files."""
         b_path = Path(base_path)
@@ -34,43 +39,50 @@ class DiffService:
         if not h_path.exists():
             raise FileNotFoundError(f"Head path does not exist: {h_path}")
 
-        base_graph = self.parser.parse_directory(b_path)
-        head_graph = self.parser.parse_directory(h_path)
+        effective_config = config or TectonConfig.load(workspace_dir=h_path if h_path.is_dir() else h_path.parent)
+        parser = C4EAMParser(config=effective_config)
+        base_graph = parser.parse_directory(b_path)
+        head_graph = parser.parse_directory(h_path)
 
-        return self.engine.compare(
+        report = self.engine.compare(
             base_graph=base_graph,
             head_graph=head_graph,
             base_ref=base_label or str(b_path),
             head_ref=head_label or str(h_path),
+            as_of_date=as_of_date, config=effective_config,
         )
+        report.configuration_changes = changed_fields(
+            TectonConfig.load(workspace_dir=b_path if b_path.is_dir() else b_path.parent).model_dump(mode="json", exclude={"repository"}),
+            TectonConfig.load(workspace_dir=h_path if h_path.is_dir() else h_path.parent).model_dump(mode="json", exclude={"repository"}),
+        )
+        return report
 
     def compare_git_revisions(
         self,
         base_ref: str,
         head_ref: str = "HEAD",
         repo_root: Path | str = ".",
+        workspace_path: str = ".",
+        as_of_date=None,
+        config=None,
     ) -> ArchitectureDiffReport:
         """Extract and compare two Git revisions (commit hashes, branches, or tags)."""
         root = Path(repo_root).resolve()
 
+        subpath = Path(workspace_path)
+        if subpath.is_absolute() or ".." in subpath.parts:
+            raise ValueError("workspace_path must stay relative to the repository")
         with tempfile.TemporaryDirectory() as tmp_base, tempfile.TemporaryDirectory() as tmp_head:
-            # Extract base_ref files
             self._extract_git_tree(base_ref, Path(tmp_base), root)
-            base_graph = self.parser.parse_directory(Path(tmp_base))
-
+            base_path = Path(tmp_base) / subpath
             if head_ref in ("WORKTREE", "WORKING_DIR", "."):
-                # Use current working directory directly
-                head_graph = self.parser.parse_directory(root)
+                head_path = root / subpath
+                if not head_path.resolve().is_relative_to(root):
+                    raise ValueError("Workspace resolves outside repository")
             else:
                 self._extract_git_tree(head_ref, Path(tmp_head), root)
-                head_graph = self.parser.parse_directory(Path(tmp_head))
-
-            return self.engine.compare(
-                base_graph=base_graph,
-                head_graph=head_graph,
-                base_ref=base_ref,
-                head_ref=head_ref,
-            )
+                head_path = Path(tmp_head) / subpath
+            return self.compare_directories(base_path, head_path, base_ref, head_ref, as_of_date, config)
 
     def _extract_git_tree(self, ref: str, dest_dir: Path, repo_root: Path) -> None:
         """Extract a Git tree at a given ref into a target directory securely without shell execution."""
@@ -132,6 +144,9 @@ class DiffService:
             "",
             f"> Comparing `{report.base_ref}` ➔ `{report.head_ref}`",
             "",
+            f"Evaluation date: {report.as_of_date}",
+            f"Configuration fingerprint: `{report.config_fingerprint}`",
+            "",
             "### 📊 Architectural Change Summary",
             "",
             "| Metric | Value |",
@@ -143,6 +158,9 @@ class DiffService:
             f"| **New Capability Gaps** | `{len(report.new_capability_gaps)}` |",
             "",
         ]
+
+        if report.configuration_changes:
+            lines.extend(["### Configuration changes", "", "```json", json.dumps(report.configuration_changes, indent=2, default=str), "```", ""])
 
         if report.new_risk_issues:
             lines.append("### 🚨 New Risks & Quality Regressions Detected")

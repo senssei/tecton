@@ -1,5 +1,7 @@
 from datetime import date
 from pathlib import Path
+from tecton_arch.cli.catalog_cli import resolve_date
+from tecton_arch.core.config import TectonConfig
 from typing import Annotated, Optional
 import typer
 from rich.console import Console
@@ -23,11 +25,12 @@ def _resolve_source(source: str | None) -> Path:
 
 @app.command("list")
 def list_roadmap(
+    config_path: Annotated[Optional[str], typer.Option("--config", help="Workspace configuration")] = None,
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
 ) -> None:
     """List architecture plateaus and transformation work packages."""
     target_path = _resolve_source(source)
-    service = RoadmapService(target_path)
+    service = RoadmapService(target_path, config=TectonConfig.load(config_path, workspace_dir=target_path if target_path.is_dir() else target_path.parent))
 
     plateaus = service.list_plateaus()
     work_packages = service.list_work_packages()
@@ -97,13 +100,14 @@ def list_roadmap(
 
 @app.command("analyze")
 def analyze_roadmap(
+    config_path: Annotated[Optional[str], typer.Option("--config", help="Workspace configuration")] = None,
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
     as_of_date: Annotated[Optional[str], typer.Option("--as-of-date", help="Target evaluation date (YYYY-MM-DD) for roadmap analysis")] = None,
 ) -> None:
     """Audit roadmap consistency, evaluate plateau states, and detect transitional capability gaps."""
     target_path = _resolve_source(source)
-    service = RoadmapService(target_path)
-    eval_date = date.fromisoformat(as_of_date) if as_of_date else None
+    service = RoadmapService(target_path, config=TectonConfig.load(config_path, workspace_dir=target_path if target_path.is_dir() else target_path.parent))
+    eval_date = resolve_date(as_of_date)
     report = service.analyze(as_of_date=eval_date)
 
     status_str = " | ".join(f"{k}: {v}" for k, v in report.work_packages_by_status.items() if v > 0)
@@ -161,13 +165,14 @@ def analyze_roadmap(
 def compare_plateaus(
     from_plateau: Annotated[str, typer.Argument(help="Baseline or starting plateau ID (e.g. As-Is)")],
     to_plateau: Annotated[str, typer.Argument(help="Target plateau ID (e.g. To-Be)")],
+    config_path: Annotated[Optional[str], typer.Option("--config", help="Workspace configuration")] = None,
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
     as_of_date: Annotated[Optional[str], typer.Option("--as-of-date", help="Target evaluation date (YYYY-MM-DD) for tech debt evaluation")] = None,
 ) -> None:
     """Compare two architecture plateaus and compute scenario delta (As-Is vs To-Be)."""
     target_path = _resolve_source(source)
-    service = RoadmapService(target_path)
-    eval_date = date.fromisoformat(as_of_date) if as_of_date else None
+    service = RoadmapService(target_path, config=TectonConfig.load(config_path, workspace_dir=target_path if target_path.is_dir() else target_path.parent))
+    eval_date = resolve_date(as_of_date)
 
     try:
         comparison = service.compare_plateaus(from_plateau, to_plateau, as_of_date=eval_date)
@@ -255,6 +260,7 @@ def compare_plateaus(
 
 @app.command("export-gantt")
 def export_gantt(
+    config_path: Annotated[Optional[str], typer.Option("--config", help="Workspace configuration")] = None,
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
     output: Annotated[Optional[str], typer.Option("--output", "-o", help="Output file path")] = None,
     title: Annotated[str, typer.Option("--title", "-t", help="Chart title")] = "Enterprise Architecture Transformation Roadmap",
@@ -262,8 +268,8 @@ def export_gantt(
 ) -> None:
     """Export Mermaid Gantt chart of architecture transformation roadmap."""
     target_path = _resolve_source(source)
-    service = RoadmapService(target_path)
-    eval_date = date.fromisoformat(as_of_date) if as_of_date else None
+    service = RoadmapService(target_path, config=TectonConfig.load(config_path, workspace_dir=target_path if target_path.is_dir() else target_path.parent))
+    eval_date = resolve_date(as_of_date)
     diagram = service.export_gantt(title=title, as_of_date=eval_date)
 
     if output:
@@ -273,3 +279,25 @@ def export_gantt(
         console.print(f"[bold green]✓ Successfully exported Gantt chart to '{output}'[/bold green]")
     else:
         console.print(diagram)
+
+from tecton_arch.cli.catalog_cli import make_app, render_report
+
+@app.command("business-case")
+def roadmap_business_cases_command(
+    source: Annotated[str, typer.Option("--source", "-s")] = ".",
+    as_of_date: Annotated[Optional[str], typer.Option("--as-of-date")] = None,
+    output_format: Annotated[str, typer.Option("--format", "-f")] = "table",
+    output: Annotated[Optional[str], typer.Option("--output", "-o")] = None,
+    config_path: Annotated[Optional[str], typer.Option("--config")] = None,
+):
+    render_report(make_app(source, as_of_date, config_path).roadmap_business_cases(), output_format, output)
+
+@app.command("feasibility")
+def roadmap_feasibility_command(
+    source: Annotated[str, typer.Option("--source", "-s")] = ".",
+    as_of_date: Annotated[Optional[str], typer.Option("--as-of-date")] = None,
+    output_format: Annotated[str, typer.Option("--format", "-f")] = "table",
+    output: Annotated[Optional[str], typer.Option("--output", "-o")] = None,
+    config_path: Annotated[Optional[str], typer.Option("--config")] = None,
+):
+    render_report(make_app(source, as_of_date, config_path).roadmap_feasibility(), output_format, output)

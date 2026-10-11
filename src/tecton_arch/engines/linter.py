@@ -86,8 +86,13 @@ class GraphLinter:
         *,
         require_owner: bool = False,
         strict: bool = False,
+        config=None,
     ) -> LintReport:
         """Execute all architectural validation passes against the compiled graph."""
+        from tecton_arch.core.config import TectonConfig
+        config = config or TectonConfig()
+        as_of_date = as_of_date or date.today()
+        require_owner = require_owner or config.workspace.require_owner
         report = LintReport()
 
         # Schema issues detected during manifest parsing
@@ -122,6 +127,49 @@ class GraphLinter:
         self._check_technology_governance(graph, report, as_of_date=as_of_date)
         self._check_roadmap_governance(graph, report)
 
+        from tecton_arch.dsl.references import REFERENCES
+        for collection, fields in REFERENCES.items():
+            entries = getattr(graph, collection)
+            entries = entries if isinstance(entries, list) else entries.values()
+            for entity in entries:
+                for field, target in fields.items():
+                    # Existing specialized checks retain their stable rule names.
+                    if collection != "work_packages" or field not in ("introduced_system_ids", "decommissioned_system_ids"):
+                        continue
+                    values = getattr(entity, field)
+                    values = values if isinstance(values, list) else [values] if values else []
+                    valid = graph.all_symbol_ids() if target == "*" else getattr(graph, target)
+                    for value in values:
+                        if value not in valid:
+                            report.add_issue(LintSeverity.ERROR, "TYPED_REFERENCE_UNKNOWN", f"{collection}.{field} references unknown {value}", getattr(entity, "id", None))
+        from tecton_arch.services.catalog_service import CatalogService
+        freshness = CatalogService(graph, config).freshness(as_of_date)
+        for item in freshness["items"]:
+            rule = {"missing": "REVIEW_MISSING", "overdue": "REVIEW_OVERDUE", "future_dated": "REVIEW_FUTURE_DATED"}.get(item["status"])
+            if rule and config.quality.rules.get(rule, "off") != "off":
+                report.add_issue(LintSeverity.WARNING, rule, item["reason"], item["entity_id"])
+        for system in graph.systems.values():
+            checks = {
+                "OWNER_UNKNOWN": bool(system.owner and system.owner not in config.owners),
+                "OWNER_INACTIVE": bool(system.owner in config.owners and not config.owners[system.owner].active),
+                "DESCRIPTION_MISSING": not bool(system.description and system.description.strip()),
+                "LIFECYCLE_MISSING": not bool(system.current_phase or system.lifecycle),
+                "SUITABILITY_MISSING": system.functional_suitability is None or system.technical_suitability is None,
+            }
+            for rule, failed in checks.items():
+                if failed and config.quality.rules.get(rule, "off") != "off":
+                    report.add_issue(LintSeverity.WARNING, rule, rule.replace("_", " ").capitalize(), system.id)
+        filtered = []
+        for issue in report.issues:
+            level = config.quality.rules.get(issue.rule)
+            if issue.rule == "MISSING_SYSTEM_OWNER" and require_owner:
+                level = "error"
+            if level == "off":
+                continue
+            if level:
+                issue.severity = LintSeverity(level.upper())
+            filtered.append(issue)
+        report.issues = filtered
         return report
 
 

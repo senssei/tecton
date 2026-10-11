@@ -327,3 +327,21 @@ def test_server_temporal_determinism(client: TestClient):
     assert res_val.status_code == 200
     assert res_val.json()["as_of_date"] == "2020-01-01"
 
+
+
+def test_catalog_planning_api_and_shared_date():
+    source = Path(__file__).resolve().parents[2] / 'examples/planning'
+    client = TestClient(create_app(source))
+    freshness = client.get('/api/v1/catalog/freshness?as_of_date=2026-07-01')
+    assert freshness.status_code == 200
+    assert freshness.json()['as_of_date'] == '2026-07-01'
+    assert client.get('/api/v1/apm/costs').json()['totals_by_currency']['PLN'] == '300.30'
+    assert client.get('/api/v1/roadmap/business-case').json()['items'][0]['roi_percent'] == '50.0'
+    assert client.get('/api/v1/roadmap/feasibility').json()['assessment_status'] == 'violations_detected'
+    coverage = client.get('/api/v1/bcm/coverage?as_of_date=2026-06-01')
+    assert coverage.status_code == 200
+    assert coverage.json()['coverages']['root']['leaf_coverage_percentage'] == 50
+    gantt = client.get('/api/v1/diagrams/roadmap-gantt?as_of_date=2026-06-01')
+    assert gantt.status_code == 200
+    assert '2026-06-01' in gantt.json()['content']
+    assert client.get('/api/v1/diagrams/roadmap-gantt?as_of_date=invalid').status_code == 422

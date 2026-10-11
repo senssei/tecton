@@ -37,7 +37,8 @@ def test_cli_data_lineage_trace():
     assert "Data Lineage Trajectory" in result.output
     assert "Customer PII Profile" in result.output
     assert "DETECTED" in result.output
-    assert "COMPLIANCE RISKS" in result.output
+    assert "modeled risks" in result.output
+    assert "declared flows only" in result.output
     assert "COMPLIANCE_SENSITIVE_DATA_ON_ELIMINATE_SYSTEM" in result.output
 
 

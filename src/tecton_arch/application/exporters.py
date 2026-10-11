@@ -90,15 +90,15 @@ class MermaidExporterAdapter(Exporter):
         if isinstance(as_of, str):
             try:
                 as_of = date.fromisoformat(as_of)
-            except Exception:
-                as_of = None
+            except ValueError as exc:
+                raise ValueError("Invalid as_of_date") from exc
 
         if dtype in ("time-matrix", "time"):
-            content = MermaidExporter.to_time_quadrant_chart(graph.get_applications(as_of_date=as_of))
+            content = MermaidExporter.to_time_quadrant_chart(graph.get_applications(as_of_date=as_of), time_config=opts["config"].time if opts.get("config") else None)
         elif dtype in ("bcm-heatmap", "bcm", "heatmap", "capability-heatmap"):
             from tecton_arch.services.bcm_service import BCMService
             title = opts.get("title", "Business Capability Realization Heatmap")
-            content = BCMService(graph).export_heatmap(title=title, as_of_date=as_of)
+            content = BCMService(graph, config=opts.get("config")).export_heatmap(title=title, as_of_date=as_of)
         elif dtype in ("tech-radar", "trm", "radar"):
             from tecton_arch.services.trm_service import TRMService
             title = opts.get("title", "Technology Standards & Obsolescence Radar")
@@ -108,7 +108,7 @@ class MermaidExporterAdapter(Exporter):
             title = opts.get("title", "Enterprise Architecture Transformation Roadmap")
             content = RoadmapService(graph).export_gantt(title=title, as_of_date=as_of)
         else:
-            content = MermaidExporter.to_time_quadrant_chart(graph.get_applications(as_of_date=as_of))
+            content = MermaidExporter.to_time_quadrant_chart(graph.get_applications(as_of_date=as_of), time_config=opts["config"].time if opts.get("config") else None)
 
         return ExportResultDto(
             format=self.name,
@@ -130,14 +130,15 @@ class MarkdownExporterAdapter(Exporter):
         if isinstance(as_of, str):
             try:
                 as_of = date.fromisoformat(as_of)
-            except Exception:
-                as_of = None
+            except ValueError as exc:
+                raise ValueError("Invalid as_of_date") from exc
 
         from tecton_arch.services.apm_service import APMService
         from tecton_arch.adapters.in_memory import InMemoryRepositoryAdapter
         apps = graph.get_applications(as_of_date=as_of)
         repo = InMemoryRepositoryAdapter(apps)
-        service = APMService(repo)
+        config = opts.get("config")
+        service = APMService(repo, config.time if config else None, config.redundancy if config else None)
         result = service.analyze(as_of_date=as_of)
         content = MarkdownExporter.generate_apm_report(
             applications=result.applications,

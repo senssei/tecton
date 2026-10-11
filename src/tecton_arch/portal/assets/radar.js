@@ -89,7 +89,7 @@
         impact.innerHTML=`<h4>Impact analysis</h4><p>${escape(report.summary)}</p><p>Risk score: ${escape(report.risk_score ?? 'Unavailable')} / 100</p><p>Direct systems: ${escape((report.directly_affected_system_names || []).join(', ') || 'None')}</p><p>Cascading systems: ${escape((report.cascading_system_names || []).join(', ') || 'None')}</p>`;
       };
       if(state.isStatic) show(state.blastRadiusReports?.[technology.id]);
-      else fetch(`/api/v1/trm/blast-radius/${encodeURIComponent(technology.id)}`).then(r=>{if(!r.ok)throw Error('Unavailable');return r.json();}).then(show).catch(()=>show(null));
+      else (window.tectonApiFetch || window.fetch)(`/api/v1/trm/blast-radius/${encodeURIComponent(technology.id)}`).then(r=>{if(!r.ok)throw Error('Unavailable');return r.json();}).then(show).catch(()=>show(null));
     }
     function draw() {
       const f=model.filters;

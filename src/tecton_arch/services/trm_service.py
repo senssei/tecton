@@ -8,11 +8,13 @@ from tecton_arch.exporters.mermaid import MermaidExporter
 class TRMService:
     """Service orchestrating tech radar evaluations and blast radius impact assessments."""
 
-    def __init__(self, graph_or_path: CompiledGraph | Path | str) -> None:
+    def __init__(self, graph_or_path: CompiledGraph | Path | str, config=None) -> None:
         if isinstance(graph_or_path, CompiledGraph):
             self.graph = graph_or_path
         else:
-            self.graph = C4EAMParser().parse_directory(graph_or_path)
+            from tecton_arch.core.config import TectonConfig
+            config = config or TectonConfig.load(workspace_dir=Path(graph_or_path) if Path(graph_or_path).is_dir() else Path(graph_or_path).parent)
+            self.graph = C4EAMParser(config=config).parse_directory(graph_or_path)
         self.engine = TRMEngine()
 
     def evaluate_technologies(self, as_of_date: date | None = None) -> TRMReport:

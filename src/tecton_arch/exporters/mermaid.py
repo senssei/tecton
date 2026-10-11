@@ -14,7 +14,7 @@ class MermaidExporter:
 
     @staticmethod
     def to_time_quadrant_chart(
-        applications: list[Application], title: str = "Application Portfolio TIME Matrix"
+        applications: list[Application], title: str = "Application Portfolio TIME Matrix", time_config=None
     ) -> str:
         """Generate a Mermaid quadrantChart from applications with suitability scores.
 
@@ -38,10 +38,14 @@ class MermaidExporter:
             if a.functional_suitability is not None and a.technical_suitability is not None
         ]
 
+        def coordinate(score, threshold):
+            if score >= threshold:
+                return .5 + .48 * (score-threshold) / (5-threshold) if threshold < 5 else .5
+            return .02 + .48 * (score-1) / (threshold-1) if threshold > 1 else .5
         for app in scored_apps:
             # Normalize 1.0 - 5.0 to 0.05 - 0.95 to keep points comfortably within quadrants
-            t_norm = (app.technical_suitability - 1.0) / 4.0
-            b_norm = (app.functional_suitability - 1.0) / 4.0
+            t_norm = coordinate(app.technical_suitability, time_config.technical_threshold) if time_config else (app.technical_suitability - 1.0) / 4.0
+            b_norm = coordinate(app.functional_suitability, time_config.business_threshold) if time_config else (app.functional_suitability - 1.0) / 4.0
 
             # Clamp between 0.01 and 0.99
             t_norm = max(0.02, min(0.98, t_norm))

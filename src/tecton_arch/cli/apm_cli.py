@@ -1,5 +1,6 @@
 from datetime import date
 from pathlib import Path
+from tecton_arch.cli.catalog_cli import resolve_date
 from typing import Annotated, Optional
 import typer
 from rich.console import Console
@@ -27,7 +28,7 @@ def get_repository(source: str | None, config: TectonConfig) -> ArchitectureRepo
         if src_path.is_file():
             return FileRepositoryAdapter(src_path)
         if src_path.is_dir():
-            return GitRepositoryAdapter(src_path)
+            return GitRepositoryAdapter(src_path, config=config)
 
     if config.repository.url:
         return GraphQLRepositoryAdapter(
@@ -48,11 +49,11 @@ def list_applications(
     as_of_date: Annotated[Optional[str], typer.Option("--as-of-date", help="Target evaluation date (YYYY-MM-DD) for lifecycle phase")] = None,
 ) -> None:
     """List all applications in the portfolio with fit scores and lifecycle."""
-    config = TectonConfig.load(config_path)
+    config = TectonConfig.load(config_path, workspace_dir=Path(source) if source and Path(source).is_dir() else Path(source).parent if source else None)
     repo = get_repository(source, config)
     service = APMService(repo, config.time, config.redundancy)
 
-    eval_date = date.fromisoformat(as_of_date) if as_of_date else None
+    eval_date = resolve_date(as_of_date)
     applications = service.get_applications(as_of_date=eval_date)
     if not applications:
         console.print("[yellow]No applications found in repository.[/yellow]")
@@ -108,7 +109,7 @@ def analyze_portfolio(
     as_of_date: Annotated[Optional[str], typer.Option("--as-of-date", help="Target evaluation date (YYYY-MM-DD) for lifecycle phase and APM analytics")] = None,
 ) -> None:
     """Run full deterministic APM evaluation: TIME classification, Redundancy, and Lifecycle."""
-    config = TectonConfig.load(config_path)
+    config = TectonConfig.load(config_path, workspace_dir=Path(source) if source and Path(source).is_dir() else Path(source).parent if source else None)
     if business_threshold is not None:
         config.time.business_threshold = business_threshold
     if technical_threshold is not None:
@@ -116,7 +117,7 @@ def analyze_portfolio(
 
     repo = get_repository(source, config)
     service = APMService(repo, config.time, config.redundancy)
-    eval_date = date.fromisoformat(as_of_date) if as_of_date else None
+    eval_date = resolve_date(as_of_date)
 
     with console.status("[bold green]Executing Tecton Portfolio Analytics..."):
         result = service.analyze(as_of_date=eval_date)
@@ -179,10 +180,10 @@ def export_matrix(
     as_of_date: Annotated[Optional[str], typer.Option("--as-of-date", help="Target evaluation date (YYYY-MM-DD) for portfolio evaluation")] = None,
 ) -> None:
     """Export TIME model visual diagram (Mermaid quadrantChart) or full Markdown report."""
-    config = TectonConfig.load(config_path)
+    config = TectonConfig.load(config_path, workspace_dir=Path(source) if source and Path(source).is_dir() else Path(source).parent if source else None)
     repo = get_repository(source, config)
     service = APMService(repo, config.time, config.redundancy)
-    eval_date = date.fromisoformat(as_of_date) if as_of_date else None
+    eval_date = resolve_date(as_of_date)
 
     apps = service.get_applications(as_of_date=eval_date)
     if not apps:
@@ -190,7 +191,7 @@ def export_matrix(
         return
 
     if fmt.lower() == "mermaid":
-        content = MermaidExporter.to_time_quadrant_chart(apps)
+        content = MermaidExporter.to_time_quadrant_chart(apps, time_config=config.time)
     else:
         result = service.analyze(as_of_date=eval_date)
         content = MarkdownExporter.generate_apm_report(
@@ -215,7 +216,7 @@ def patch_time_classifications(
     apply: Annotated[bool, typer.Option("--apply", help="Persist changes to repository (default dry-run)")] = False,
 ) -> None:
     """Apply evaluated TIME classification quadrants to repository entities."""
-    config = TectonConfig.load(config_path)
+    config = TectonConfig.load(config_path, workspace_dir=Path(source) if source and Path(source).is_dir() else Path(source).parent if source else None)
     repo = get_repository(source, config)
     service = APMService(repo, config.time, config.redundancy)
 
@@ -231,3 +232,15 @@ def patch_time_classifications(
 
     if is_dry_run and results:
         console.print("\n[dim]To persist changes to the repository, provide the `--apply` flag.[/dim]")
+
+from tecton_arch.cli.catalog_cli import make_app, render_report
+
+@app.command("costs")
+def apm_costs_command(
+    source: Annotated[str, typer.Option("--source", "-s")] = ".",
+    as_of_date: Annotated[Optional[str], typer.Option("--as-of-date")] = None,
+    output_format: Annotated[str, typer.Option("--format", "-f")] = "table",
+    output: Annotated[Optional[str], typer.Option("--output", "-o")] = None,
+    config_path: Annotated[Optional[str], typer.Option("--config")] = None,
+):
+    render_report(make_app(source, as_of_date, config_path).apm_costs(), output_format, output)

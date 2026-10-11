@@ -24,11 +24,12 @@ class DataFlowEdge(BaseModel):
 
 
 class DataLineageReport(BaseModel):
-    """Complete end-to-end data lineage trajectory and compliance audit."""
+    """Declared lineage risk assessment. is_compliant is a deprecated compatibility property."""
 
     data_object_id: str
     data_object_name: str
     classification: DataClassification
+    assessment_status: str = "no_modeled_flows"
     owner: str | None = None
     producers: list[str] = Field(default_factory=list)
     consumers: list[str] = Field(default_factory=list)
@@ -51,7 +52,7 @@ class LineageEngine:
     def __init__(self) -> None:
         pass
 
-    def trace_lineage(self, data_object_id: str, graph: CompiledGraph) -> DataLineageReport:
+    def trace_lineage(self, data_object_id: str, graph: CompiledGraph, as_of_date=None, config=None) -> DataLineageReport:
         """Trace the end-to-end flow trajectory of a data object across system interfaces."""
         data_obj = graph.data_objects.get(data_object_id)
         if not data_obj:
@@ -112,9 +113,10 @@ class LineageEngine:
         consumers = sorted(list(target_nodes))
 
         # 3. Privacy & Compliance Invariants
-        compliance_risks = self._audit_compliance(data_obj, participating, graph)
+        compliance_risks = self._audit_compliance(data_obj, participating, graph, as_of_date, config)
 
         return DataLineageReport(
+            assessment_status="no_modeled_flows" if not flow_edges else "risks_detected" if compliance_risks else "no_detected_risks",
             data_object_id=data_obj.id,
             data_object_name=data_obj.name,
             classification=data_obj.classification,
@@ -127,7 +129,7 @@ class LineageEngine:
         )
 
     def _audit_compliance(
-        self, data_obj: DataObjectDef, system_ids: list[str], graph: CompiledGraph
+        self, data_obj: DataObjectDef, system_ids: list[str], graph: CompiledGraph, as_of_date=None, config=None
     ) -> list[dict[str, Any]]:
         """Verify privacy and security invariants for sensitive data objects."""
         risks: list[dict[str, Any]] = []
@@ -141,13 +143,15 @@ class LineageEngine:
         if not is_sensitive:
             return risks
 
+        from tecton_arch.services.assessment import evaluate_applications
+        evaluated = {a.id: a for a in evaluate_applications(graph.get_applications(as_of_date=as_of_date), config, as_of_date)}
         for s_id in system_ids:
             sys = graph.systems.get(s_id)
             if not sys:
                 continue
 
             # Invariant 1: Sensitive data must not flow to an ELIMINATE system
-            if sys.time_classification == TimeQuadrant.ELIMINATE:
+            if evaluated[s_id].time_classification == TimeQuadrant.ELIMINATE:
                 risks.append({
                     "severity": "HIGH",
                     "rule": "COMPLIANCE_SENSITIVE_DATA_ON_ELIMINATE_SYSTEM",

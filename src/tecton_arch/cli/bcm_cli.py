@@ -1,6 +1,9 @@
 """CLI subcommands for Business Capability Management (BCM)."""
 
 from pathlib import Path
+from tecton_arch.cli.catalog_cli import resolve_date
+from tecton_arch.core.config import TectonConfig
+from datetime import date
 from typing import Annotated, Optional
 import typer
 from rich.console import Console
@@ -24,12 +27,14 @@ def _resolve_source(source: str | None) -> Path:
 
 @app.command("tree")
 def show_capability_tree(
+    as_of_date: Annotated[Optional[str], typer.Option("--as-of-date", help="Evaluation date YYYY-MM-DD")] = None,
+    config_path: Annotated[Optional[str], typer.Option("--config", help="Workspace configuration")] = None,
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
 ) -> None:
     """Display the hierarchical Business Capability tree and realizing systems."""
     target_path = _resolve_source(source)
-    service = BCMService(target_path)
-    report = service.analyze()
+    service = BCMService(target_path, config=TectonConfig.load(config_path, workspace_dir=target_path if target_path.is_dir() else target_path.parent))
+    report = service.analyze(as_of_date=resolve_date(as_of_date))
 
     root_tree = Tree(f"[bold cyan]Business Capability Map[/bold cyan] ({report.total_capabilities} capabilities)")
 
@@ -69,12 +74,14 @@ def show_capability_tree(
 
 @app.command("analyze")
 def analyze_capabilities(
+    as_of_date: Annotated[Optional[str], typer.Option("--as-of-date", help="Evaluation date YYYY-MM-DD")] = None,
+    config_path: Annotated[Optional[str], typer.Option("--config", help="Workspace configuration")] = None,
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
 ) -> None:
     """Analyze capability coverage, detect unmapped blind spots, and assess health."""
     target_path = _resolve_source(source)
-    service = BCMService(target_path)
-    report = service.analyze()
+    service = BCMService(target_path, config=TectonConfig.load(config_path, workspace_dir=target_path if target_path.is_dir() else target_path.parent))
+    report = service.analyze(as_of_date=resolve_date(as_of_date))
 
     console.print("\n[bold]1. Business Capability Coverage Summary[/bold]")
     summary_table = Table()
@@ -126,13 +133,15 @@ def analyze_capabilities(
 
 @app.command("heatmap")
 def export_heatmap(
+    as_of_date: Annotated[Optional[str], typer.Option("--as-of-date", help="Evaluation date YYYY-MM-DD")] = None,
+    config_path: Annotated[Optional[str], typer.Option("--config", help="Workspace configuration")] = None,
     source: Annotated[Optional[str], typer.Option("--source", "-s", help="Path to architecture directory or manifest")] = None,
     output: Annotated[Optional[str], typer.Option("--output", "-o", help="Output file path (default stdout)")] = None,
 ) -> None:
     """Generate color-coded Mermaid flowchart heatmap of the capability architecture."""
     target_path = _resolve_source(source)
-    service = BCMService(target_path)
-    chart = service.export_heatmap()
+    service = BCMService(target_path, config=TectonConfig.load(config_path, workspace_dir=target_path if target_path.is_dir() else target_path.parent))
+    chart = service.export_heatmap(as_of_date=resolve_date(as_of_date))
 
     if output:
         out_path = Path(output)

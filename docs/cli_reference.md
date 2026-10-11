@@ -17,12 +17,11 @@ instead be supplied through its containing directory for APM.
 
 APM commands accept `--config`. Configuration searches the supplied path, then
 `tecton.yaml`, `.tecton.yaml`, `tecton.yml` in the working directory. The first
-readable mapping is used; invalid YAML is currently skipped. Environment values
+readable mapping is used; invalid YAML in an existing configuration is reported. Environment values
 for `TECTON_API_URL`, `TECTON_API_TOKEN`, `TECTON_WORKSPACE`,
 `TECTON_DRY_RUN`, `TECTON_TIME_BUSINESS_THRESHOLD` and
 `TECTON_TIME_TECHNICAL_THRESHOLD` override loaded values. Workspace selection is
-stored in config but is not sent by the current GraphQL adapter. Graph commands
-through `TectonApp` use default analysis settings; they do not load APM config.
+stored in config but is not sent by the current GraphQL adapter. Graph commands and `TectonApp` load workspace configuration, including analysis thresholds.
 
 ## ✅ Validation
 
@@ -68,10 +67,10 @@ capabilities. It is a regression check, not a replacement for full validation.
 
 `tecton diff main HEAD` is also supported when running inside a dedicated
 architecture Git repository. Revision comparison scans each archived tree;
-it has no workspace-subpath option. In this project's multi-example repository,
+use `--workspace-path` to restrict it to a catalog subdirectory. In this project's multi-example repository,
 compare explicit workspace directories to avoid combining unrelated models.
 `HEAD` means committed files; use `WORKTREE` to request uncommitted state.
-Time-sensitive checks use the current date, not each commit's historical date.
+Time-sensitive checks use one evaluation date for both sides; set it with `--as-of-date`.
 
 ## 🌐 Portal and API
 
@@ -120,3 +119,12 @@ There is no `--dry-run` CLI option for `patch-time`: simulation is the default,
 controlled by the absence of `--apply`. The config `dry_run` setting does not
 override this command's flag. Import/export commands write output paths directly
 and do not share this patch-simulation policy.
+
+## Catalog maintenance and planning
+
+`catalog freshness`, `catalog rename`, `apm costs`, `roadmap business-case` and
+`roadmap feasibility` accept `--source` and `--config`. Reports support
+`--format table|json|markdown`. Rename previews by default and `--output` writes
+a validated separate catalog. `diff` now supports `--workspace-path`, `--config`
+and `--as-of-date`; all collections and declared fields are compared.
+See [catalog review and planning](catalog_planning.md) for full examples.
