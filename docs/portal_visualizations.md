@@ -1,9 +1,10 @@
 # Portal visualizations
 
-The technology radar uses bundled D3 7.9.0. Its scripts, styles and license are
-embedded into both static and REST portal HTML. The radar and explicit DFD view
-work without network access; the other Mermaid diagrams and Tailwind styling
-still use CDNs.
+The portal is completely self-contained for offline and air-gapped environments.
+Its visual assets—D3 7.9.0, Mermaid.js 10.9.8, Tailwind CSS 3.4.17 runtime, and
+custom scripts/styles—are bundled and embedded into both static exported HTML and
+live REST portal responses, eliminating all external CDN network requests.
+
 
 ## Technology radar
 

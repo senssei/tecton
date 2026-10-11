@@ -32,9 +32,9 @@ tecton export portal --source examples/dogfood/tecton_c4_workspace -o dist/eam-p
 The GitHub Actions `EAM pilot catalog` check validates the synthetic merge
 commit on pull requests and the merge-group state in a merge queue. Errors
 block the check; warnings are informative. The portal is a read-only build
-artifact, not a versioned source file or a deployed site. Its current styling
-and Mermaid diagrams load CDN assets; this pilot does not promise a fully
-offline visual experience.
+artifact, not a versioned source file or a deployed site. All visual styling,
+Mermaid diagrams and interactive charts are fully bundled offline, ensuring
+a completely self-contained offline experience in air-gapped environments.
 
 On GitHub, configure `main` to require this check, one approval from someone
 other than the author, dismissal of stale approvals, and an up-to-date branch

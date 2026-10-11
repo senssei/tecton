@@ -64,4 +64,4 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 
 [tool.setuptools.package-data]
-"tecton_arch.portal" = ["assets/*.js", "assets/*.css", "assets/D3-LICENSE"]
+"tecton_arch.portal" = ["assets/*.js", "assets/*.css", "assets/*-LICENSE", "assets/D3-LICENSE"]

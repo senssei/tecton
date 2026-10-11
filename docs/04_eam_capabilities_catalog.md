@@ -16,7 +16,7 @@ describes the current metamodel.
 | Data | Declared objects/interfaces and graph-based lineage/risk heuristics | No technical contract parser or compliance certification |
 | Roadmap | Plateaus, work packages, comparison and Gantt source | No arbitrary timestamp reconstruction or initiative collision solver |
 | Review | Validation and semantic graph diff | Git text merge remains separate from semantic validation |
-| Reporting | Mermaid, Markdown, static/dynamic HTML portal | Full portal styling and diagrams use CDN assets |
+| Reporting | Mermaid, Markdown, static/dynamic HTML portal | Bundled offline assets; no live external CMS or multi-tenant portal backend |
 | Interchange | Backstage and ArchiMate/Archi import/export | Supported mappings only; no universal lossless interchange guarantee |
 | Remote APM | GraphQL application fetch/TIME patch adapter | Endpoint-specific schema; not complete central-EAM synchronization |
 
@@ -27,7 +27,7 @@ describes the current metamodel.
 - Cost/maturity aggregation and explicit realization roles.
 - Owner surveys, freshness checks, editing forms and approval workflows.
 - ID-refactoring commands and safe multi-file graph changes.
-- Full offline portal asset bundling and persistent query cache.
+- Persistent query cache and incremental graph compilation.
 - Broader EAM/CMDB connectors and organization-wide Git-catalog operation.
 - Natural-language exploration or AI enrichment, if justified by a user need.
 

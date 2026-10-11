@@ -16,6 +16,12 @@ def test_portal_builder_dynamic_html():
     assert "tab-trm" in html
     assert "tab-data" in html
     assert "tab-roadmap" in html
+    # Air-gapped offline bundle guarantees
+    assert "https://cdn.tailwindcss.com" not in html
+    assert "https://cdn.jsdelivr.net" not in html
+    assert "Tailwind Labs" in html
+    assert "Knut Sveidqvist" in html
+    assert "Mike Bostock" in html
 
 
 def test_portal_builder_static_html():

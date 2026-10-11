@@ -15,6 +15,7 @@ been resolved. It is an engineering assessment, not a production readiness certi
 | Workspace only accepted a filesystem path | It also accepts a compiled graph or repository object | Application facade tests |
 | Broad parsing included generated/hidden content | Hidden and common build/dependency paths are excluded | Parser unit tests |
 | Static/live portal application payloads diverged | Shared application serialization includes owners and child components | Pilot/portal tests |
+| Portal loaded external network assets | Bundled offline assets include D3 7.9.0, Mermaid 10.9.8, and Tailwind CSS 3.4.17 runtime with zero CDN requests | Browser offline tests (`tests/browser/test_radar.py`) and distribution checks |
 
 These changes do not eliminate all coupling, mutation or ingestion risks.
 
@@ -24,32 +25,28 @@ These changes do not eliminate all coupling, mutation or ingestion risks.
    selected `as_of_date` parameters. Lifecycle phase inference, roadmap rendering
    and Git diff do not share a global injected evaluation date. The CLI does not
    expose one, and DTOs do not consistently record an evaluation date.
-2. **Portal network assets.** Static exports embed data but load Tailwind and
-   Mermaid from CDNs. Fallback rendering can show data without full styling or
-   diagrams; a fully self-contained offline visual bundle remains future work.
-3. **Concrete graph coupling.** Services/engines use `CompiledGraph`, and an
+2. **Concrete graph coupling.** Services/engines use `CompiledGraph`, and an
    application-only repository does not supply a complete EAM graph. Facade
    methods mix typed DTOs and dictionaries.
-4. **Persistence boundaries.** Supported writes are TIME updates in certain
+3. **Persistence boundaries.** Supported writes are TIME updates in certain
    manifest layouts. Replacement is atomic for one file; a later reload failure
    or multiple updates do not have a transactional rollback guarantee. General
    JSON Patch semantics, concurrent-write locking and formatting preservation
    are not provided.
-5. **Discovery and schema strictness.** Entity-like JSON/YAML can still be
+4. **Discovery and schema strictness.** Entity-like JSON/YAML can still be
    inferred, unknown fields are generally ignored, and an empty workspace passes.
    Explicit workspace paths and reviewed manifests remain necessary.
-6. **Local API access.** Read endpoints are unauthenticated. Optional token
+5. **Local API access.** Read endpoints are unauthenticated. Optional token
    checking applies only to reload. `--reload` currently has no file-watching
    effect. Production hosting needs external access controls and a refresh plan.
-7. **Interchange coverage.** Connectors map supported entities and preserve IDs
+6. **Interchange coverage.** Connectors map supported entities and preserve IDs
    through annotations/properties. Field-complete round trips, external XSD
    validation and arbitrary tool compatibility are not established.
 
 ## Follow-up order
 
-Prioritize fixed-date evaluation and bundled portal assets when reproducible
-historical analysis or offline sharing becomes a concrete requirement. Introduce
-stricter/scoped ingestion before expanding catalog discovery. Broaden persistence
+Prioritize fixed-date evaluation when reproducible historical analysis becomes a
+concrete requirement. Introduce stricter/scoped ingestion before expanding catalog discovery. Broaden persistence
 only with explicit patch contracts, validation-before-write and failure tests.
 Benchmark representative data before stating latency or scale guarantees.
 

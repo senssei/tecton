@@ -31,7 +31,10 @@ with tempfile.TemporaryDirectory() as folder:
     assert report["valid"]
     run("apm", "analyze", "--source", str(workspace))
     run("export", "portal", "--source", str(workspace), "-o", str(cwd / "portal"))
-    assert "Wheel smoke" in (cwd / "portal/index.html").read_text()
+    portal_html = (cwd / "portal/index.html").read_text()
+    assert "Wheel smoke" in portal_html
+    assert "Tailwind Labs" in portal_html
+    assert "Knut Sveidqvist" in portal_html
     assert TectonApp(workspace).apm_applications()[0]["owner"] == "Test team"
     assert "/api/v1/apm/applications" in create_app(workspace).openapi()["paths"]
 print("Installed wheel OK: import, version, CLI, validation, analysis, portal and API schema")

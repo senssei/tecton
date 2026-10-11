@@ -7,11 +7,12 @@ PORTAL_HTML_TEMPLATE = """<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tecton | Enterprise Architecture Intelligence Portal</title>
   <style>__RADAR_STYLE__</style>
+  <!-- Bundled Tailwind CSS 3.4.17 (Offline Air-Gapped) -->
+  <script>__TAILWIND_SCRIPT__</script>
+  <!-- Bundled Mermaid.js 10.9.8 (Offline Air-Gapped) -->
+  <script>__MERMAID_SCRIPT__</script>
+  <!-- Bundled D3 7.9.0 & Tecton Visualizations -->
   <script>__RADAR_SCRIPT__</script>
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Mermaid.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
   <script>
     if (typeof tailwind !== 'undefined') {
       tailwind.config = {

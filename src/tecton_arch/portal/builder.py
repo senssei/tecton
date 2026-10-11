@@ -1,5 +1,6 @@
 """Static and Dynamic Architecture Portal Generator."""
 
+import functools
 import json
 from pathlib import Path
 from importlib.resources import files
@@ -47,11 +48,33 @@ class PortalBuilder:
         return html_file
 
     @staticmethod
+    @functools.lru_cache(maxsize=1)
     def _template() -> str:
         assets = files("tecton_arch.portal").joinpath("assets")
-        scripts = "/*\n" + assets.joinpath("D3-LICENSE").read_text(encoding="utf-8") + "\n*/\n" + "\n".join(assets.joinpath(name).read_text(encoding="utf-8") for name in (
-            "d3-7.9.0.min.js", "radar.js", "dfd.js", "roadmap.js", "lineage.js",
-        ))
-        return PORTAL_HTML_TEMPLATE.replace("__RADAR_SCRIPT__", scripts.replace("</script", "<\\/script")).replace(
-            "__RADAR_STYLE__", assets.joinpath("radar.css").read_text(encoding="utf-8")
+        tailwind_script = (
+            "/*\n"
+            + assets.joinpath("TAILWIND-LICENSE").read_text(encoding="utf-8")
+            + "\n*/\n"
+            + assets.joinpath("tailwind-3.4.17.min.js").read_text(encoding="utf-8")
+        )
+        mermaid_script = (
+            "/*\n"
+            + assets.joinpath("MERMAID-LICENSE").read_text(encoding="utf-8")
+            + "\n*/\n"
+            + assets.joinpath("mermaid-10.9.8.min.js").read_text(encoding="utf-8")
+        )
+        scripts = (
+            "/*\n"
+            + assets.joinpath("D3-LICENSE").read_text(encoding="utf-8")
+            + "\n*/\n"
+            + "\n".join(
+                assets.joinpath(name).read_text(encoding="utf-8")
+                for name in ("d3-7.9.0.min.js", "radar.js", "dfd.js", "roadmap.js", "lineage.js")
+            )
+        )
+        return (
+            PORTAL_HTML_TEMPLATE.replace("__TAILWIND_SCRIPT__", tailwind_script.replace("</script", "<\\/script"))
+            .replace("__MERMAID_SCRIPT__", mermaid_script.replace("</script", "<\\/script"))
+            .replace("__RADAR_SCRIPT__", scripts.replace("</script", "<\\/script"))
+            .replace("__RADAR_STYLE__", assets.joinpath("radar.css").read_text(encoding="utf-8"))
         )

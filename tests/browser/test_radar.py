@@ -222,3 +222,17 @@ def test_scenario_comparison_explains_losses_and_reverse(page, tmp_path):
     page.locator('#compare-to-select').select_option('plateau-2027-target')
     page.locator('#compare-button').click()
     assert 'two different' in host.inner_text()
+
+
+def test_portal_fully_offline_bundled_mermaid_and_tailwind(page, tmp_path):
+    path = PortalBuilder.export_portal(TectonApp(ROOT / 'examples/c4_eam_workspace'), tmp_path)
+    page.goto(path.as_uri())
+    # Verify no CDN assets were required and runtime objects exist offline
+    assert page.evaluate("typeof tailwind !== 'undefined'")
+    assert page.evaluate("typeof mermaid !== 'undefined'")
+    assert page.evaluate("typeof d3 !== 'undefined'")
+    # Switch to APM tab and verify Mermaid renders the quadrant chart SVG offline
+    page.locator('[data-tab="apm"]').click()
+    page.wait_for_selector("#mermaid-time-matrix svg")
+    assert page.locator("#mermaid-time-matrix svg").count() >= 1
+

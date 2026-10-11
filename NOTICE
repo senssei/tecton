@@ -4,6 +4,13 @@ Copyright 2026 Tecton contributors
 This project is licensed under the Apache License, Version 2.0.
 Tecton is an independent project, not affiliated with the unrelated tecton PyPI package.
 
-The portal bundles D3.js 7.9.0, Copyright 2010-2023 Mike Bostock,
-under the ISC license. Its full license is included in
-tecton_arch/portal/assets/D3-LICENSE and embedded in generated portal HTML.
+The portal bundles:
+- D3.js 7.9.0, Copyright 2010-2023 Mike Bostock, under the ISC license.
+  Its full license is included in tecton_arch/portal/assets/D3-LICENSE
+  and embedded in generated portal HTML.
+- Mermaid.js 10.9.8, Copyright 2014-2024 Knut Sveidqvist and contributors, under the MIT license.
+  Its full license is included in tecton_arch/portal/assets/MERMAID-LICENSE
+  and embedded in generated portal HTML.
+- Tailwind CSS 3.4.17, Copyright Tailwind Labs, Inc., under the MIT license.
+  Its full license is included in tecton_arch/portal/assets/TAILWIND-LICENSE
+  and embedded in generated portal HTML.
