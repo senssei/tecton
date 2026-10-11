@@ -1,6 +1,8 @@
 # Pilot catalog: one product; implementation modules are child components.
 systems:
 - id: sys-tecton
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
+  annual_cost: {amount: '1200', currency: USD}  # AI subscription: 100 USD/month; labour is tracked in wp-tecton-bootstrap
   name: Tecton
   description: Architecture-as-code product providing catalog validation, deterministic
     analysis, CLI, REST API and a read-only portal.

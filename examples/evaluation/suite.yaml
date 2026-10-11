@@ -1,0 +1,23 @@
+version: 1
+criteria:
+  functional:
+    business_fit:
+      weight: 2
+    usability:
+      weight: 1
+  technical:
+    maintainability:
+      weight: 1
+applications:
+  crm:
+    functional:
+      business_fit: 5
+      usability: 4
+    technical:
+      maintainability: 2
+    rationale: Strong business fit with expensive maintenance.
+expected_time:
+  crm: TOLERATE
+  platform: INVEST
+  internal-tool: MIGRATE
+  legacy: ELIMINATE

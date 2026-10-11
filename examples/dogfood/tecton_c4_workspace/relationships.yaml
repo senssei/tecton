@@ -1,39 +1,48 @@
 relationships:
 - source_id: sys-tecton-application
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
   target_id: sys-tecton-dsl-linter
   relation_type: depends_on
   technology: Python use-case orchestration
   description: Calls GraphLinter for pre-merge validation
 - source_id: sys-tecton-application
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
   target_id: sys-tecton-adapter-git
   relation_type: depends_on
   technology: Python use-case orchestration
   description: Ingests architecture from Git repository
 - source_id: sys-tecton-application
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
   target_id: sys-tecton-engine-time
   relation_type: depends_on
   technology: Python use-case orchestration
   description: Evaluates TIME classifications
 - source_id: sys-tecton-application
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
   target_id: sys-tecton-engine-redundancy
   relation_type: depends_on
   technology: Python use-case orchestration
   description: Computes Jaccard redundancy clusters
 - source_id: sys-tecton-application
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
   target_id: sys-tecton-exporter-mermaid
   relation_type: depends_on
   technology: Python use-case orchestration
   description: Generates living Mermaid diagrams
 - source_id: sys-tecton-server
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
   target_id: sys-tecton-application
   relation_type: depends_on
 - source_id: sys-tecton-portal
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
   target_id: sys-tecton-application
   relation_type: depends_on
 - source_id: sys-tecton-application
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
   target_id: sys-tecton-core
   relation_type: depends_on
 - source_id: sys-tecton-cli
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
   target_id: sys-tecton-application
   relation_type: depends_on
   description: CLI delegates to application use cases

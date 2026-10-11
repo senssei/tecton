@@ -8,6 +8,7 @@ from tecton_arch.cli.apm_cli import app as apm_app
 from tecton_arch.cli.bcm_cli import app as bcm_app
 from tecton_arch.cli.data_cli import app as data_app
 from tecton_arch.cli.diff_cli import diff_command
+from tecton_arch.cli.evaluate_cli import evaluate_command
 from tecton_arch.cli.export_cli import app as export_app
 from tecton_arch.cli.import_cli import app as import_app
 from tecton_arch.cli.roadmap_cli import app as roadmap_app
@@ -34,6 +35,7 @@ app.add_typer(import_app, name="import")
 app.command(name="validate", help="Validate architecture DSL manifests and enforce CI/CD quality gate.")(validate_command)
 app.command(name="lint", help="Alias for validate: Lint architecture DSL manifests.")(validate_command)
 app.command(name="diff", help="Semantic architectural diff between Git revisions or architecture directories.")(diff_command)
+app.command(name="evaluate", help="Evaluate YAML suitability criteria, catalog quality and TIME expectations.")(evaluate_command)
 app.command(name="serve", help="Launch headless Architecture Intelligence REST API server.")(serve_command)
 app.command(name="portal", help="Launch interactive Architecture Intelligence Web Portal & Dashboard.")(serve_command)
 

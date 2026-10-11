@@ -1,36 +1,42 @@
 # Tecton Technology Standards Radar
 technologies:
   - id: tech-python-312
+    review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
     name: Python 3.11+
     category: runtime
     status: approved
     description: Minimum supported runtime from pyproject.toml; stable ID retained
 
   - id: tech-pydantic-v2
+    review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
     name: Pydantic v2
     category: framework
     status: approved
     description: Core schema validation and fast Rust-backed model serialization
 
   - id: tech-typer
+    review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
     name: Typer
     category: framework
     status: approved
     description: CLI ergonomics and POSIX-compliant command routing
 
   - id: tech-rich
+    review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
     name: Rich
     category: library
     status: approved
     description: ANSI color formatting and terminal table generation
 
   - id: tech-mermaid
+    review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
     name: Mermaid.js
     category: visual
     status: approved
     description: Declarative architecture diagram and quadrant chart generator
 
   - id: tech-pyyaml
+    review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
     name: PyYAML Safe
     category: library
     status: approved

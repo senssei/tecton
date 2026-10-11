@@ -27,6 +27,7 @@ and produces portfolio reports, Mermaid diagrams and a read-only web portal.
 | 📚 Catalog | Systems, child components, capabilities, technologies, interfaces, data objects and roadmaps |
 | ✅ Validation | Duplicate IDs, broken references, capability cycles, lifecycle and roadmap checks; optional required system owner |
 | 📊 Portfolio | Threshold-based TIME classification and pairwise functional overlap detection |
+| 🧪 Evaluation | [Weighted YAML assessments, catalog quality and expected TIME checks](docs/evaluation.md) through `tecton evaluate` |
 | 🧭 Architecture analysis | Capability coverage, technology blast radius, declared data lineage and plateau comparisons |
 | 🔎 Review | Semantic directory/Git diff and reports suitable for PR review |
 | 🌐 Publishing | Mermaid, Markdown and HTML portal exports; Backstage and ArchiMate connectors |

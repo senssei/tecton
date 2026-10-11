@@ -1,0 +1,11 @@
+# Uses the catalog's suitability and deliberately expects an incorrect TIME result.
+version: 1
+criteria:
+  functional:
+    business_fit:
+      weight: 1
+  technical:
+    maintainability:
+      weight: 1
+expected_time:
+  crm: INVEST

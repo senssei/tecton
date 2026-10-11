@@ -1,0 +1,10 @@
+# Dogfood suite: Tecton evaluates its own catalog.
+# Catalog scores are kept as-is; this pins the expected TIME classification.
+version: 1
+criteria:
+  functional:
+    business_fit: {weight: 1}
+  technical:
+    maintainability: {weight: 1}
+expected_time:
+  sys-tecton: INVEST

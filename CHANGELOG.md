@@ -4,6 +4,8 @@
 
 ### Added
 
+- Local YAML evaluator for weighted suitability assessments, catalog quality and
+  expected TIME results; table/JSON/Markdown reports and CI exit codes.
 - YAML/JSON architecture workspace, compiled graph and model validation.
 - Portfolio TIME/overlap analysis, capability coverage, technology impact,
   declared data lineage, transformation roadmaps and semantic diff.

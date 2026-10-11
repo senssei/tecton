@@ -1,0 +1,19 @@
+systems:
+  - id: crm
+    name: CRM
+    description: Sales customer relationship management
+    owner: sales
+    functional_suitability: 4
+    technical_suitability: 2
+  - id: platform
+    name: Customer platform
+    functional_suitability: 5
+    technical_suitability: 5
+  - id: internal-tool
+    name: Internal tool
+    functional_suitability: 2
+    technical_suitability: 5
+  - id: legacy
+    name: Legacy billing
+    functional_suitability: 1
+    technical_suitability: 1

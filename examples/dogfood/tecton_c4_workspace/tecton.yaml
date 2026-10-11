@@ -1,0 +1,13 @@
+# Assumptions: maintenance effort of 8-16 h/month, so the monthly capacity is the
+# upper bound of 2 person-days (October 2026 actual: 3). Monthly USD budget is
+# derived from that capacity at 75 USD/h (2 person-days = 1200 USD).
+teams:
+  tecton-maintainers:
+    capacity_person_days: '2'
+    monthly_capacity:
+      2026-10: '3'
+budgets:
+  2026-10: {USD: '1250'}
+  2026-11: {USD: '1200'}
+  2026-12: {USD: '1200'}
+  2027-01: {USD: '1200'}

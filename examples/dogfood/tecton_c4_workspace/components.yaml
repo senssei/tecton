@@ -2,83 +2,98 @@
 # Ownership and lifecycle are inherited from sys-tecton.
 containers:
 - id: sys-tecton-cli
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
   name: Tecton Unified CLI Toolchain
   system_id: sys-tecton
   technology: tech-python-312
   description: Primary command-line interface entry point coordinating APM, linting,
     and exports
 - id: sys-tecton-dsl-linter
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
   name: Tecton Quality Gate & Linter
   system_id: sys-tecton
   technology: tech-python-312
   description: Graph integrity compiler enforcing DAG invariants and zero dangling
     references
 - id: sys-tecton-engine-time
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
   name: Tecton TIME Scoring Engine
   system_id: sys-tecton
   technology: tech-python-312
   description: Gartner TIME matrix placement and JSON patch generation
 - id: sys-tecton-engine-redundancy
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
   name: Tecton Redundancy Clustering Engine
   system_id: sys-tecton
   technology: tech-python-312
   description: Weighted Jaccard set similarity rationalization across capabilities
     and user groups
 - id: sys-tecton-adapter-git
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
   name: Tecton Git Architecture-as-Code Adapter
   system_id: sys-tecton
   technology: tech-python-312
   description: Hexagonal adapter ingesting distributed Git repositories and compiling
     in-memory graphs
 - id: sys-tecton-exporter-mermaid
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
   name: Tecton Living Mermaid Exporter
   system_id: sys-tecton
   technology: tech-python-312
   description: Deterministic exporter of TIME quadrant charts and markdown architecture
     dossiers
 - id: sys-tecton-application
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
   name: Application use cases
   system_id: sys-tecton
   technology: tech-python-312
   description: 'tecton_arch.application: coordinates adapters, analysis, API payloads and
     exports'
 - id: sys-tecton-server
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
   name: REST API server
   system_id: sys-tecton
   technology: tech-python-312
   description: 'tecton_arch.server: read-only FastAPI endpoints and dynamic portal'
 - id: sys-tecton-portal
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
   name: Architecture portal
   system_id: sys-tecton
   technology: tech-python-312
   description: 'tecton_arch.portal: static HTML export and dynamic read-only catalog'
 - id: sys-tecton-core
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
   name: Domain models
   system_id: sys-tecton
   technology: tech-python-312
   description: 'tecton_arch.core: applications, lifecycles and configuration'
 - id: sys-tecton-engine-lifecycle
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
   name: Lifecycle validation
   system_id: sys-tecton
   technology: tech-python-312
   description: 'tecton_arch.engines.lifecycle_validator: chronological lifecycle checks'
 - id: sys-tecton-adapter-graphql
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
   name: GraphQL repository adapter
   system_id: sys-tecton
   technology: tech-python-312
   description: 'tecton_arch.adapters.graphql_adapter: optional remote EAM integration'
 - id: sys-tecton-engines-portfolio
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
   name: Capability and technology analysis
   system_id: sys-tecton
   technology: tech-python-312
   description: 'tecton_arch.engines: capability coverage and technology blast radius'
 - id: sys-tecton-engines-transformation
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
   name: Data, roadmap and semantic diff
   system_id: sys-tecton
   technology: tech-python-312
   description: 'tecton_arch.engines: lineage, transformation plateaus and architectural
     change analysis'
 - id: sys-tecton-connectors
+  review: {reviewed_on: 2026-10-11, reviewed_by: Tecton maintainers, next_review_on: 2027-04-11}
   name: Ecosystem connectors
   system_id: sys-tecton
   technology: tech-python-312

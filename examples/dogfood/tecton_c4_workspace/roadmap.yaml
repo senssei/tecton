@@ -1,0 +1,86 @@
+# Cost basis (USD, rounded up). Assumptions: 75 USD/h, an approximate EU
+# senior solution architect benchmark (employee-equivalent salary data suggests
+# about 55-65 USD/h; rounded up for contractor overhead); 8 h = 1 person-day.
+# Completed work: 8.33 h of commit activity (10-11.10.2026, 2 h-gap session
+# clustering with 30 min padding) x2 for work without commits = 16.66 h
+# -> 1249.5 USD -> 1250 USD, 3 person-days (rounded up).
+# Capacity: 8-16 h/month of maintenance = max 2 person-days/month.
+# Planned work: estimates at 75 USD/h; savings are estimates, not measurements.
+work_packages:
+- id: wp-tecton-bootstrap
+  name: Tecton bootstrap and evaluation
+  description: Initial build of the Tecton catalog, services and local evaluation (git history 10-11 Oct 2026).
+  start_date: 2026-10-10
+  target_date: 2026-10-11
+  status: COMPLETED
+  owner: Tecton maintainers
+  involved_system_ids:
+  - sys-tecton
+  planned_cost: {amount: '1250', currency: USD}
+  resource_allocations:
+  - {team_id: tecton-maintainers, month: 2026-10, person_days: '3'}
+  spend_plan:
+  - {month: 2026-10, amount: '1250'}
+- id: wp-fix-suite-manifest-noise
+  name: "Bug: evaluation suites reported as unrecognized manifests"
+  description: Scanning a directory that contains evaluate suites (suite.yaml, evaluation.yaml) raises UNRECOGNIZED_MANIFEST_DOCUMENT errors and blocks the quality gate.
+  start_date: 2026-11-02
+  target_date: 2026-11-06
+  status: PLANNED
+  owner: Tecton maintainers
+  involved_system_ids:
+  - sys-tecton
+  planned_cost: {amount: '1200', currency: USD}
+  business_case:
+    annual_net_savings: '900'
+    horizon_years: 3
+    assumptions:
+    - "Estimate: ~1 h/month (12 h/year) of triage of false quality-gate errors at 75 USD/h"
+  resource_allocations:
+  - {team_id: tecton-maintainers, month: 2026-11, person_days: '2'}
+  spend_plan:
+  - {month: 2026-11, amount: '1200'}
+- id: wp-feature-optional-suite
+  name: "Feature: make --suite optional in tecton evaluate"
+  description: Allow evaluating existing catalog classifications and quality without an explicit suite file.
+  start_date: 2026-12-01
+  target_date: 2026-12-04
+  status: PLANNED
+  owner: Tecton maintainers
+  depends_on:
+  - wp-fix-suite-manifest-noise
+  involved_system_ids:
+  - sys-tecton
+  planned_cost: {amount: '600', currency: USD}
+  business_case:
+    annual_net_savings: '450'
+    horizon_years: 3
+    assumptions:
+    - "Estimate: ~0.5 h/month (6 h/year) saved writing throwaway suite files at 75 USD/h"
+  resource_allocations:
+  - {team_id: tecton-maintainers, month: 2026-12, person_days: '1'}
+  spend_plan:
+  - {month: 2026-12, amount: '600'}
+- id: wp-feature-evaluation-portal
+  name: "Feature: evaluation results in the portal"
+  description: Show expected vs actual TIME checks and agreement from tecton evaluate in the Catalog and Planning tab.
+  start_date: 2026-12-14
+  target_date: 2027-01-29
+  status: PLANNED
+  owner: Tecton maintainers
+  depends_on:
+  - wp-feature-optional-suite
+  involved_system_ids:
+  - sys-tecton
+  planned_cost: {amount: '1800', currency: USD}
+  business_case:
+    annual_net_savings: '1350'
+    horizon_years: 3
+    assumptions:
+    - "Estimate: ~1.5 h/month (18 h/year) saved on manual review of evaluation reports at 75 USD/h"
+  resource_allocations:
+  - {team_id: tecton-maintainers, month: 2026-12, person_days: '1'}
+  - {team_id: tecton-maintainers, month: 2027-01, person_days: '2'}
+  spend_plan:
+  - {month: 2026-12, amount: '600'}
+  - {month: 2027-01, amount: '1200'}
