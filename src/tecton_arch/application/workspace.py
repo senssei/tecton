@@ -1,6 +1,7 @@
 """Workspace representation managing repository I/O and compiled architecture graph."""
 
 from pathlib import Path
+from inspect import getattr_static
 from typing import Any, Protocol, runtime_checkable
 
 from tecton_arch.adapters.git_adapter import GitRepositoryAdapter
@@ -36,7 +37,7 @@ class Workspace:
         elif hasattr(workspace_source, "fetch_applications"):
             self.path = Path(".")
             self._adapter = workspace_source
-            self._graph = getattr(workspace_source, "graph", None)
+            self._graph = None
         elif hasattr(workspace_source, "systems") and hasattr(workspace_source, "capabilities"):
             self.path = Path(".")
             self._graph = workspace_source
@@ -50,6 +51,15 @@ class Workspace:
         """Return the current compiled architecture graph."""
         if self._graph is not None:
             return self._graph
+        return self._adapter.graph
+
+    @property
+    def optional_graph(self) -> CompiledGraph | None:
+        """Return a graph when supported, propagating graph-loading failures."""
+        if self._graph is not None:
+            return self._graph
+        if getattr_static(self._adapter, "graph", None) is None:
+            return None
         return self._adapter.graph
 
     @property

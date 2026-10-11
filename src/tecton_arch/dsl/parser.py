@@ -12,6 +12,7 @@ from tecton_arch.dsl.schema import (
     C4EAMManifest,
     ContainerDef,
     DataObjectDef,
+    DataFlowDiagramDef,
     InterfaceDef,
     PlateauDef,
     RelationshipDef,
@@ -36,6 +37,14 @@ class SymbolTable:
     work_packages: dict[str, WorkPackageDef] = field(default_factory=dict)
     symbol_origins: dict[str, str] = field(default_factory=dict)
     duplicate_ids: list[tuple[str, str, str]] = field(default_factory=list)
+    data_flow_diagrams: dict[str, DataFlowDiagramDef] = field(default_factory=dict)
+
+    def register_data_flow_diagram(self, diagram: DataFlowDiagramDef, origin: str) -> None:
+        if diagram.id in self.symbol_origins:
+            self.duplicate_ids.append((diagram.id, self.symbol_origins[diagram.id], origin))
+        else:
+            self.symbol_origins[diagram.id] = origin
+        self.data_flow_diagrams[diagram.id] = diagram
 
     def register_capability(self, cap: BusinessCapabilityDef, origin: str) -> None:
         if cap.id in self.symbol_origins:
@@ -149,6 +158,10 @@ class CompiledGraph:
         return self.table.relationships
 
     @property
+    def data_flow_diagrams(self) -> dict[str, DataFlowDiagramDef]:
+        return self.table.data_flow_diagrams
+
+    @property
     def symbol_origins(self) -> dict[str, str]:
         return self.table.symbol_origins
 
@@ -167,10 +180,13 @@ class CompiledGraph:
             | set(self.table.interfaces.keys())
             | set(self.table.plateaus.keys())
             | set(self.table.work_packages.keys())
+            | set(self.table.data_flow_diagrams.keys())
         )
 
     def get_entity(self, entity_id: str) -> Any | None:
         """Fetch entity by ID from any metamodel collection."""
+        if entity_id in self.table.data_flow_diagrams:
+            return self.table.data_flow_diagrams[entity_id]
         if entity_id in self.table.systems:
             return self.table.systems[entity_id]
         if entity_id in self.table.capabilities:
@@ -280,10 +296,12 @@ class C4EAMParser:
             has_collections = any(
                 k in doc for k in (
                     "capabilities", "systems", "containers", "relationships",
-                    "technologies", "data_objects", "interfaces", "plateaus", "work_packages"
+                    "technologies", "data_objects", "interfaces", "plateaus", "work_packages", "data_flow_diagrams"
                 )
             )
             if has_collections:
+                for raw in doc.get("data_flow_diagrams", []):
+                    table.register_data_flow_diagram(DataFlowDiagramDef.model_validate(raw), origin)
                 for cap_raw in doc.get("capabilities", []):
                     table.register_capability(BusinessCapabilityDef.model_validate(cap_raw), origin)
                 for sys_raw in doc.get("systems", []):
@@ -307,7 +325,9 @@ class C4EAMParser:
 
     def _ingest_single_dict(self, item: dict[str, Any], origin: str, table: SymbolTable) -> None:
         kind = item.get("kind", "").lower()
-        if kind in ("capability", "businesscapability"):
+        if kind in ("data_flow_diagram", "dfd"):
+            table.register_data_flow_diagram(DataFlowDiagramDef.model_validate(item), origin)
+        elif kind in ("capability", "businesscapability"):
             table.register_capability(BusinessCapabilityDef.model_validate(item), origin)
         elif kind in ("system", "softwaresystem", "application"):
             table.register_system(SoftwareSystemDef.model_validate(item), origin)

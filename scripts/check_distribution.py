@@ -18,6 +18,8 @@ def main():
         names = archive.namelist()
         assert "tecton_arch/__init__.py" in names
         assert "tecton_arch/portal/template.py" in names
+        for asset in ("d3-7.9.0.min.js", "D3-LICENSE", "radar.js", "radar.css", "dfd.js", "roadmap.js", "lineage.js"):
+            assert "tecton_arch/portal/assets/" + asset in names
         assert not any(name.startswith("tecton/") for name in names)
         metadata_path = next(name for name in names if name.endswith(".dist-info/METADATA"))
         metadata = Parser().parsestr(archive.read(metadata_path).decode())

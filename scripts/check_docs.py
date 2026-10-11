@@ -13,7 +13,7 @@ from tecton_arch.engines.linter import GraphLinter
 
 ROOT = Path(__file__).resolve().parents[1]
 COLLECTIONS = {"systems", "containers", "capabilities", "technologies", "relationships",
-               "data_objects", "interfaces", "plateaus", "work_packages"}
+               "data_objects", "interfaces", "plateaus", "work_packages", "data_flow_diagrams"}
 
 
 def main():

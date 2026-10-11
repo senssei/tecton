@@ -155,6 +155,15 @@ class TectonApp:
         apps = self.workspace.adapter.fetch_applications()
         service = APMService(self.workspace.adapter)
         time_map = service.time_engine.evaluate_all(apps)
+        graph = self.workspace.optional_graph
+        components_by_system: dict[str, list[dict[str, Any]]] = {}
+        if graph is not None:
+            for component in sorted(graph.containers.values(), key=lambda c: c.id):
+                components_by_system.setdefault(component.system_id, []).append({
+                    "id": component.id,
+                    "name": component.name,
+                    "description": component.description,
+                })
         return [
             {
                 "id": app.id,
@@ -169,11 +178,7 @@ class TectonApp:
                 "technologies": app.metadata.get("technologies", []),
                 "description": app.metadata.get("description"),
                 "owner": app.metadata.get("owner"),
-                "components": [
-                    {"id": c.id, "name": c.name, "description": c.description}
-                    for c in sorted(self.graph.containers.values(), key=lambda c: c.id)
-                    if c.system_id == app.id
-                ],
+                "components": components_by_system.get(app.id, []),
             }
             for app in sorted(apps, key=lambda a: a.name)
         ]
@@ -255,6 +260,10 @@ class TectonApp:
         service = LineageService(self.graph)
         return service.export_lineage_flowchart(data_id)
 
+    def data_flow_diagrams(self) -> list[dict[str, Any]]:
+        """Return explicit DFD models without inferring processes or stores."""
+        return [diagram.model_dump(mode="json") for diagram in sorted(self.graph.data_flow_diagrams.values(), key=lambda d: d.id)]
+
     def bcm_analysis(self) -> dict[str, Any]:
         """Run Business Capability Mapping (BCM) analysis."""
         service = BCMService(self.graph)
@@ -265,7 +274,24 @@ class TectonApp:
         """Run Technology Radar & Risk Management (TRM) evaluation."""
         service = TRMService(self.graph)
         report = service.evaluate_technologies(as_of_date=as_of_date)
-        return report.model_dump()
+        result = report.model_dump(mode="json")
+        result["technologies"] = self._radar_technologies(report)
+        return result
+
+    def _radar_technologies(self, report) -> list[dict[str, Any]]:
+        """Use the same technology details for REST and static radar exports."""
+        graph = self.graph
+        technologies = []
+        for technology in sorted(report.technologies, key=lambda t: t.id):
+            item = technology.model_dump(mode="json")
+            item["description"] = graph.technologies[technology.id].description
+            item["realizing_system_details"] = [
+                {"id": system.id, "name": system.name, "owner": system.owner}
+                for system in sorted(graph.systems.values(), key=lambda s: s.id)
+                if technology.id in system.technologies
+            ]
+            technologies.append(item)
+        return technologies
 
     def trm_blast_radius(self, tech_id: str, as_of_date: date | None = None) -> dict[str, Any]:
         """Calculate blast radius and cascade failure impact for a technology."""
@@ -377,25 +403,17 @@ class TectonApp:
 
         plateaus = roadmap_service.list_plateaus()
         comparisons = {}
-        for i in range(len(plateaus) - 1):
-            p1 = plateaus[i].id
-            p2 = plateaus[i + 1].id
-            comparisons[f"{p1}_{p2}"] = roadmap_service.compare_plateaus(p1, p2).model_dump()
+        for source in plateaus:
+            for target in plateaus:
+                if source.id != target.id:
+                    comparisons[f"{source.id}_{target.id}"] = roadmap_service.compare_plateaus(source.id, target.id).model_dump()
 
         return {
             "version": __version__,
             "overview": self.overview().model_dump(),
             "validation": self.validate().model_dump(),
             "applications": self.apm_applications(),
-            "capabilities": [
-                {
-                    "id": c.id,
-                    "name": c.name,
-                    "level": c.level,
-                    "description": c.description,
-                }
-                for c in graph.capabilities.values()
-            ],
+            "capabilities": self.bcm_capabilities(),
             "coverage": {
                 "coverages": {
                     cid: {
@@ -406,15 +424,7 @@ class TectonApp:
                     for cid, cov in bcm_report.coverages.items()
                 }
             },
-            "technologies": [
-                {
-                    "id": t.id,
-                    "name": t.name,
-                    "status": t.status.value,
-                    "category": t.category,
-                }
-                for t in trm_report.technologies
-            ],
+            "technologies": self._radar_technologies(trm_report),
             "dataObjects": [
                 {
                     "id": d.id,
@@ -423,6 +433,7 @@ class TectonApp:
                 }
                 for d in graph.data_objects.values()
             ],
+            "dataFlowDiagrams": self.data_flow_diagrams(),
             "interfaces": [
                 {
                     "id": i.id,
@@ -432,22 +443,9 @@ class TectonApp:
                 }
                 for i in graph.interfaces.values()
             ],
-            "plateaus": [
-                {
-                    "id": p.id,
-                    "name": p.name,
-                    "target_date": str(p.target_date) if p.target_date else None,
-                }
-                for p in roadmap_service.list_plateaus()
-            ],
-            "workPackages": [
-                {
-                    "id": w.id,
-                    "name": w.name,
-                    "status": w.status.value,
-                }
-                for w in roadmap_service.list_work_packages()
-            ],
+            "plateaus": self.list_plateaus(),
+            "workPackages": self.list_work_packages(),
+            "lineageReports": {data_id: self.data_lineage(data_id) for data_id in graph.data_objects},
             "diagrams": diagrams,
             "blastRadiusReports": blast_reports,
             "scenarioComparisons": comparisons,

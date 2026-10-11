@@ -30,3 +30,5 @@ Start with the [project README](../README.md), then choose a guide below.
 The numbered documents are maintained design notes. They describe this project,
 not the capabilities of every commercial EAM product. Future ideas are marked
 explicitly; source code and executable examples define current interfaces.
+
+- [Portal visualizations](portal_visualizations.md): interactive radar, explicit DFD models and browser checks.

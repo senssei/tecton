@@ -1,6 +1,7 @@
 """Mermaid Diagram Exporters for Enterprise Architecture Visualizations."""
 
 from typing import Any
+from html import escape
 from datetime import date
 from tecton_arch.core.models import Application
 from tecton_arch.dsl.schema import PlateauDef, TechnologyDef, TechnologyStatus, WorkPackageDef, WorkPackageStatus
@@ -151,7 +152,14 @@ class MermaidExporter:
         def sanitize_id(raw_id: str) -> str:
             return "sys_" + raw_id.replace("-", "_").replace(".", "_")
 
-        # Declare nodes
+        names = {}
+        for edge in report.flow_edges:
+            names[edge.source_system_id] = edge.source_system_name
+            names[edge.target_system_id] = edge.target_system_name
+        senders = {edge.source_system_id for edge in report.flow_edges}
+        receivers = {edge.target_system_id for edge in report.flow_edges}
+
+        # Declare nodes with readable names and their role in this data flow.
         for s_id in report.participating_systems:
             nid = sanitize_id(s_id)
             node_class = (
@@ -159,13 +167,21 @@ class MermaidExporter:
                 else "consumer" if s_id in report.consumers
                 else "node_default"
             )
-            lines.append(f'    {nid}["{s_id}"]:::{node_class}')
+            role = "Receives and sends data" if s_id in senders and s_id in receivers else "Sends data" if s_id in senders else "Receives data"
+            label = escape(names.get(s_id, s_id), quote=True)
+            lines.append(f'    {nid}["{label}<br/>{role}"]:::{node_class}')
 
         # Declare edges
+        channels: dict[tuple[str, str], list[str]] = {}
         for edge in report.flow_edges:
-            src = sanitize_id(edge.source_system_id)
-            dst = sanitize_id(edge.target_system_id)
-            edge_label = f"{edge.protocol}: {edge.channel_name}".replace('"', "'")
+            key = (edge.source_system_id, edge.target_system_id)
+            label = f"{escape(edge.channel_name, quote=True)}<br/>({escape(edge.protocol, quote=True)})"
+            if label not in channels.setdefault(key, []):
+                channels[key].append(label)
+        for (source, target), labels in channels.items():
+            src = sanitize_id(source)
+            dst = sanitize_id(target)
+            edge_label = "<br/>".join(labels)
             lines.append(f'    {src} -->|"{edge_label}"| {dst}')
 
         return "\n".join(lines)

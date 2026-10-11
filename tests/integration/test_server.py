@@ -285,3 +285,11 @@ def test_server_reload_with_token(client: TestClient, monkeypatch):
 
 
 
+
+
+def test_server_explicit_dfd_and_radar_details(client: TestClient):
+    response = client.get('/api/v1/data/flow-diagrams')
+    assert response.status_code == 200
+    assert {node['kind'] for node in response.json()[0]['nodes']} == {'process', 'data_store', 'external_entity'}
+    technologies = client.get('/api/v1/trm/technologies').json()['technologies']
+    assert all('realizing_system_details' in item and 'is_eol' in item for item in technologies)

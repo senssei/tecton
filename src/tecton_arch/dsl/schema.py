@@ -281,6 +281,58 @@ class WorkPackageDef(BaseModel):
         return clean
 
 
+class DFDNodeDef(BaseModel):
+    """Explicit node in a diagram-local DFD namespace."""
+
+    id: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    kind: str = Field(pattern="^(process|data_store|external_entity)$")
+    description: str | None = None
+    system_id: str | None = None
+
+    @field_validator("id", "name")
+    @classmethod
+    def non_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("DFD node ID and name must not be blank")
+        return value.strip()
+
+
+class DFDFlowDef(BaseModel):
+    """Named data transfer between DFD nodes; references shared data objects."""
+
+    id: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    source_id: str = Field(min_length=1)
+    target_id: str = Field(min_length=1)
+    data_objects: list[str] = Field(min_length=1)
+    description: str | None = None
+
+    @field_validator("id", "name", "source_id", "target_id")
+    @classmethod
+    def non_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("DFD flow fields must not be blank")
+        return value.strip()
+
+
+class DataFlowDiagramDef(BaseModel):
+    """Explicit DFD; nodes and flow IDs are local to this diagram."""
+
+    id: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    description: str | None = None
+    nodes: list[DFDNodeDef] = Field(default_factory=list)
+    flows: list[DFDFlowDef] = Field(default_factory=list)
+
+    @field_validator("id", "name")
+    @classmethod
+    def non_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("DFD ID and name must not be blank")
+        return value.strip()
+
+
 class C4EAMManifest(BaseModel):
     """Root or grouped manifest document representing architecture entities."""
 
@@ -293,4 +345,5 @@ class C4EAMManifest(BaseModel):
     interfaces: list[InterfaceDef] = Field(default_factory=list)
     plateaus: list[PlateauDef] = Field(default_factory=list)
     work_packages: list[WorkPackageDef] = Field(default_factory=list)
+    data_flow_diagrams: list[DataFlowDiagramDef] = Field(default_factory=list)
 

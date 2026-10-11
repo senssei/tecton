@@ -1,7 +1,13 @@
 """Unit tests for Tecton application layer, Workspace, and TectonApp facade."""
 
 from pathlib import Path
+import json
 import pytest
+
+from tecton_arch.adapters.file_adapter import FileRepositoryAdapter
+from tecton_arch.adapters.in_memory import InMemoryRepositoryAdapter
+from tecton_arch.core.models import Application
+from tecton_arch.dsl.parser import C4EAMParser
 
 from tecton_arch.application import (
     ExportError,
@@ -89,3 +95,71 @@ def test_tecton_app_facade_portal_snapshot(dogfood_workspace_path: Path):
     assert "backstage_yaml" in snapshot
     assert "archimate_xml" in snapshot
     assert "archi_native_xml" in snapshot
+
+
+@pytest.mark.parametrize("repository_kind", ["memory", "file"])
+def test_application_listing_without_graph(repository_kind, tmp_path):
+    application = Application(
+        id="app-demo", name="Demo", functional_suitability=5,
+        technical_suitability=5, tags=["pilot"],
+        metadata={"owner": "Team", "description": "Example", "technologies": ["python"]},
+    )
+    if repository_kind == "file":
+        path = tmp_path / "applications.json"
+        path.write_text(json.dumps([application.model_dump(mode="json")]), encoding="utf-8")
+        adapter = FileRepositoryAdapter(path)
+    else:
+        adapter = InMemoryRepositoryAdapter([application])
+    workspace = Workspace(adapter)
+    assert workspace.optional_graph is None
+    with pytest.raises(AttributeError):
+        _ = workspace.graph
+    listed = TectonApp(workspace).apm_applications()
+    assert len(listed) == 1
+    assert listed[0]["components"] == []
+    assert listed[0]["time_classification"] == "INVEST"
+    assert listed[0]["owner"] == "Team"
+    assert listed[0]["description"] == "Example"
+    assert listed[0]["technologies"] == ["python"]
+    assert listed[0]["tags"] == ["pilot"]
+
+
+def test_application_components_grouped_and_sorted():
+    graph = C4EAMParser().parse_content("""
+systems:
+  - {id: app-a, name: A}
+  - {id: app-b, name: B}
+  - {id: app-c, name: C}
+containers:
+  - {id: z, name: Z, system_id: app-a, description: Last}
+  - {id: b, name: B component, system_id: app-b}
+  - {id: a, name: A component, system_id: app-a}
+""")
+    workspace = Workspace.from_graph(graph)
+    assert workspace.optional_graph is graph
+    listed = TectonApp(workspace).apm_applications()
+    assert [c["id"] for c in listed[0]["components"]] == ["a", "z"]
+    assert listed[0]["components"][1]["description"] == "Last"
+    assert [c["id"] for c in listed[1]["components"]] == ["b"]
+    assert listed[2]["components"] == []
+
+
+@pytest.mark.parametrize("error_type", [ValueError, AttributeError])
+def test_application_listing_propagates_graph_loading_errors(error_type):
+    class BrokenGraphAdapter(InMemoryRepositoryAdapter):
+        @property
+        def graph(self):
+            raise error_type("Graph loading failed")
+
+    workspace = Workspace(BrokenGraphAdapter([Application(id="demo", name="Demo")]))
+    with pytest.raises(error_type, match="Graph loading failed"):
+        TectonApp(workspace).apm_applications()
+
+
+def test_radar_static_and_rest_data_match(dogfood_workspace_path):
+    app = TectonApp(dogfood_workspace_path)
+    assert app.trm_evaluation()['technologies'] == app.portal_snapshot()['technologies']
+    technology = next(t for t in app.trm_evaluation()['technologies'] if t['id'] == 'tech-python-312')
+    assert technology['realizing_systems_count'] == len(technology['realizing_system_details'])
+    assert technology['realizing_system_details'][0]['owner'] == 'Tecton maintainers'
+    assert 'eol_date' in technology and 'is_eol' in technology

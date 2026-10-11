@@ -90,6 +90,22 @@ def sample_graph() -> CompiledGraph:
     return CompiledGraph(table)
 
 
+def test_lineage_diagram_names_roles_and_combined_channels(sample_graph: CompiledGraph):
+    from tecton_arch.exporters.mermaid import MermaidExporter
+
+    report = LineageEngine().trace_lineage("do-pii", sample_graph)
+    for edge in report.flow_edges:
+        edge.source_system_name = 'Sender <Service> "A"'
+    diagram = MermaidExporter.to_data_lineage_flowchart(report)
+    assert 'Sender &lt;Service&gt; &quot;A&quot;' in diagram
+    assert "Sends data" in diagram
+    assert "Receives data" in diagram
+    assert diagram.count(" -->|") == 1
+    for edge in report.flow_edges:
+        assert edge.protocol in diagram
+        assert edge.channel_name in diagram
+
+
 def test_lineage_trace_missing_data_object(sample_graph: CompiledGraph):
     engine = LineageEngine()
     with pytest.raises(KeyError, match="not found"):

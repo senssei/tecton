@@ -105,3 +105,8 @@ Duplicate IDs, dangling references and capability hierarchy cycles are errors.
 Dependency cycles and some date/technology findings are warnings. `--strict`
 blocks warnings; `--require-owner` rejects missing or whitespace-only system
 owners. It does not require system descriptions or lifecycle phases globally.
+
+## Data flow diagrams
+
+The optional `data_flow_diagrams` collection defines explicit processes, stores,
+external entities and named flows. See the [DFD schema and example](portal_visualizations.md#explicit-data-flow-diagrams).

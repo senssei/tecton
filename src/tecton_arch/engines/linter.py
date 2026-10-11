@@ -93,6 +93,7 @@ class GraphLinter:
                     )
 
         self._check_duplicate_ids(graph, report)
+        self._check_data_flow_diagrams(graph, report)
         self._check_referential_integrity(graph, report)
         self._check_capability_cycles(graph, report)
         self._check_dependency_cycles(graph, report)
@@ -111,6 +112,31 @@ class GraphLinter:
                 entity_id=entity_id,
                 file_origin=orig2,
             )
+
+    def _check_data_flow_diagrams(self, graph: CompiledGraph, report: LintReport) -> None:
+        for diagram in graph.data_flow_diagrams.values():
+            origin = graph.symbol_origins.get(diagram.id)
+            nodes = {node.id: node for node in diagram.nodes}
+            ids = [item.id for item in [*diagram.nodes, *diagram.flows]]
+            if len(set(ids)) != len(ids):
+                report.add_issue(LintSeverity.ERROR, "DFD_DUPLICATE_ID", "Node and flow IDs must be unique within the diagram", diagram.id, origin)
+            for node in diagram.nodes:
+                if node.system_id and node.system_id not in graph.systems:
+                    report.add_issue(LintSeverity.ERROR, "DFD_UNKNOWN_SYSTEM", f"Node '{node.id}' references unknown system '{node.system_id}'", diagram.id, origin)
+            for flow in diagram.flows:
+                source, target = nodes.get(flow.source_id), nodes.get(flow.target_id)
+                if source is None or target is None:
+                    report.add_issue(LintSeverity.ERROR, "DFD_UNKNOWN_ENDPOINT", f"Flow '{flow.id}' references an unknown node", diagram.id, origin)
+                elif source.kind != "process" and target.kind != "process":
+                    report.add_issue(LintSeverity.ERROR, "DFD_PROCESS_REQUIRED", f"Flow '{flow.id}' must connect to a process", diagram.id, origin)
+                if flow.source_id == flow.target_id:
+                    report.add_issue(LintSeverity.ERROR, "DFD_SELF_FLOW", f"Flow '{flow.id}' connects a node to itself", diagram.id, origin)
+                for data_id in flow.data_objects:
+                    if data_id not in graph.data_objects:
+                        report.add_issue(LintSeverity.ERROR, "DFD_UNKNOWN_DATA_OBJECT", f"Flow '{flow.id}' references unknown data object '{data_id}'", diagram.id, origin)
+            for node in diagram.nodes:
+                if node.kind == "process" and (not any(f.source_id == node.id for f in diagram.flows) or not any(f.target_id == node.id for f in diagram.flows)):
+                    report.add_issue(LintSeverity.WARNING, "DFD_UNBALANCED_PROCESS", f"Process '{node.id}' must have declared input and output flows", diagram.id, origin)
 
     def _check_referential_integrity(self, graph: CompiledGraph, report: LintReport) -> None:
         all_ids = graph.all_symbol_ids()

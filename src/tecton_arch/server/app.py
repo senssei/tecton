@@ -172,6 +172,10 @@ def create_app(workspace_path: Path | str = ".") -> FastAPI:
         """List registered communication interfaces and API contracts."""
         return tecton_app.interfaces()
 
+    @app.get("/api/v1/data/flow-diagrams", tags=["Data Architecture"])
+    def list_data_flow_diagrams() -> list[dict[str, Any]]:
+        return tecton_app.data_flow_diagrams()
+
     @app.get("/api/v1/data/lineage/{data_object_id}", tags=["Data Architecture"])
     def trace_data_lineage(data_object_id: str) -> dict[str, Any]:
         """Trace end-to-end data lineage trajectory and compliance audit report."""

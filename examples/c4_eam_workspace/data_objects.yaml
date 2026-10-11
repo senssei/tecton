@@ -17,3 +17,59 @@ data_objects:
     classification: CONFIDENTIAL
     owner: Financial Operations
     description: Accounting ledger entries and tax billing records
+
+# Explicit illustrative DFD, independent of the system integration topology.
+data_flow_diagrams:
+  - id: dfd-order-processing
+    name: Order processing — level 1
+    description: Illustrative order handling with explicit processes, an order store and external participants.
+    nodes:
+      - id: sales
+        name: Sales channel
+        kind: external_entity
+      - id: capture
+        name: Capture sales order
+        kind: process
+        system_id: sys-crm-core
+      - id: orders
+        name: Sales orders
+        kind: data_store
+      - id: route
+        name: Route order for fulfillment
+        kind: process
+        system_id: sys-order-router
+      - id: billing
+        name: Billing service
+        kind: external_entity
+        system_id: sys-legacy-billing
+    flows:
+      - id: submit
+        name: Submitted sales order
+        source_id: sales
+        target_id: capture
+        data_objects: [do-order-record]
+      - id: save
+        name: Validated order
+        source_id: capture
+        target_id: orders
+        data_objects: [do-order-record]
+      - id: read
+        name: Pending order
+        source_id: orders
+        target_id: route
+        data_objects: [do-order-record]
+      - id: fulfill
+        name: Order ready for billing
+        source_id: route
+        target_id: billing
+        data_objects: [do-order-record]
+      - id: invoice
+        name: Issued invoice
+        source_id: billing
+        target_id: route
+        data_objects: [do-invoice-document]
+      - id: confirm
+        name: Invoice confirmation
+        source_id: route
+        target_id: sales
+        data_objects: [do-invoice-document]
